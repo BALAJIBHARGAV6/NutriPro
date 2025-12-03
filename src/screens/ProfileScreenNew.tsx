@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { User } from '../types';
 import { storageService } from '../services/storageService';
+import { databaseService } from '../services/databaseService';
+import { isSupabaseConfigured } from '../config/supabase';
 
 interface ProfileScreenProps {
   user: User;
@@ -72,6 +74,17 @@ const ProfileScreenNew: React.FC<ProfileScreenProps> = ({
         break;
     }
 
+    // Update in Supabase first
+    if (isSupabaseConfigured) {
+      try {
+        await databaseService.updateUserProfile(updates);
+        console.log('✅ Profile updated in Supabase');
+      } catch (error) {
+        console.error('Error updating Supabase:', error);
+      }
+    }
+    
+    // Also update locally
     await storageService.updateUser(updates);
     onUpdateUser(updates);
     setEditingField(null);
@@ -83,6 +96,17 @@ const ProfileScreenNew: React.FC<ProfileScreenProps> = ({
     if (!newDisease.trim()) return;
 
     const updatedDiseases = [...(user.diseases || []), newDisease.trim()];
+    
+    // Update in Supabase first
+    if (isSupabaseConfigured) {
+      try {
+        await databaseService.updateUserProfile({ diseases: updatedDiseases });
+        console.log('✅ Diseases updated in Supabase');
+      } catch (error) {
+        console.error('Error updating diseases in Supabase:', error);
+      }
+    }
+    
     await storageService.updateUser({ diseases: updatedDiseases });
     onUpdateUser({ diseases: updatedDiseases });
     setNewDisease('');
@@ -106,6 +130,17 @@ const ProfileScreenNew: React.FC<ProfileScreenProps> = ({
           style: 'destructive',
           onPress: async () => {
             const updatedDiseases = (user.diseases || []).filter(d => d !== disease);
+            
+            // Update in Supabase first
+            if (isSupabaseConfigured) {
+              try {
+                await databaseService.updateUserProfile({ diseases: updatedDiseases });
+                console.log('✅ Diseases updated in Supabase');
+              } catch (error) {
+                console.error('Error updating diseases in Supabase:', error);
+              }
+            }
+            
             await storageService.updateUser({ diseases: updatedDiseases });
             onUpdateUser({ diseases: updatedDiseases });
             Alert.alert(

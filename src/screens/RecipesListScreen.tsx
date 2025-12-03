@@ -14,6 +14,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { User } from '../types';
 import { Meal, professionalAIService, UserProfile } from '../services/professionalAIService';
 import { storageService } from '../services/storageService';
+import { databaseService } from '../services/databaseService';
+import { isSupabaseConfigured } from '../config/supabase';
 
 interface RecipesListScreenProps {
   user: User;
@@ -165,7 +167,21 @@ const RecipesListScreen: React.FC<RecipesListScreenProps> = ({
   // Load user's added meals to show related recipes
   const loadMyMeals = async () => {
     try {
-      const meals = await storageService.getMyMealsToday(user.id);
+      const today = new Date().toISOString().split('T')[0];
+      let meals: Meal[] = [];
+      
+      // Try Supabase first
+      if (isSupabaseConfigured) {
+        try {
+          meals = await databaseService.getMyMeals(today);
+          console.log('📥 Recipes: Loaded', meals.length, 'meals from Supabase');
+        } catch (error) {
+          meals = await storageService.getMyMealsToday(user.id);
+        }
+      } else {
+        meals = await storageService.getMyMealsToday(user.id);
+      }
+      
       setMyMeals(meals);
     } catch (error) {
       console.error('Error loading my meals:', error);

@@ -1,53 +1,94 @@
 // Professional AI Service for NutriPlan - Real API Integration
-// Using Groq AI for meal generation with smart rate limiting
+// Using Groq AI for meal generation with smart rate limiting and retry
 
 const GROQ_API_KEY = process.env.EXPO_PUBLIC_GROQ_API_KEY || '';
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
-// Rate limiting state
+// Rate limiting state - increased delays for free tier
 let lastApiCall = 0;
-const MIN_DELAY_BETWEEN_CALLS = 3000; // 3 seconds between calls
+const MIN_DELAY_BETWEEN_CALLS = 5000; // 5 seconds between calls (increased)
 let consecutiveFailures = 0;
-const MAX_CONSECUTIVE_FAILURES = 2;
+const MAX_CONSECUTIVE_FAILURES = 3;
+let rateLimitResetTime = 0;
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Smart rate-limited retry
+// Extract wait time from rate limit error
+function extractWaitTime(errorMessage: string): number {
+  const match = errorMessage.match(/try again in (\d+\.?\d*)s/i);
+  if (match) {
+    return Math.ceil(parseFloat(match[1]) * 1000) + 500; // Add 500ms buffer
+  }
+  return 5000; // Default 5 second wait
+}
+
+// Smart rate-limited retry with exponential backoff
 async function rateLimitedCall<T>(
   fn: () => Promise<T>,
-  useFallback: () => T
+  useFallback: () => T,
+  maxRetries: number = 2
 ): Promise<T> {
   // If too many failures, use fallback immediately
   if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
-    console.log('Using fallback due to consecutive API failures');
+    console.log('🔄 Using fallback due to consecutive API failures');
+    // Reset after 30 seconds
+    setTimeout(() => { consecutiveFailures = 0; }, 30000);
     return useFallback();
   }
 
-  // Ensure minimum delay between API calls
+  // Check if we're still in rate limit cooldown
   const now = Date.now();
-  const timeSinceLastCall = now - lastApiCall;
-  if (timeSinceLastCall < MIN_DELAY_BETWEEN_CALLS) {
-    const waitTime = MIN_DELAY_BETWEEN_CALLS - timeSinceLastCall;
-    console.log(`Rate limiting: waiting ${waitTime}ms before API call`);
+  if (rateLimitResetTime > now) {
+    const waitTime = rateLimitResetTime - now;
+    console.log(`⏳ Rate limit cooldown: waiting ${Math.ceil(waitTime/1000)}s`);
     await sleep(waitTime);
   }
 
-  try {
-    lastApiCall = Date.now();
-    const result = await fn();
-    consecutiveFailures = 0; // Reset on success
-    return result;
-  } catch (error: any) {
-    consecutiveFailures++;
-    console.log(`API call failed (${consecutiveFailures}/${MAX_CONSECUTIVE_FAILURES}), using fallback`);
-    
-    // If rate limited, wait longer next time
-    if (error.message?.includes('429') || error.message?.includes('rate_limit')) {
-      lastApiCall = Date.now() + 5000; // Add extra delay
-    }
-    
-    return useFallback();
+  // Ensure minimum delay between API calls
+  const timeSinceLastCall = Date.now() - lastApiCall;
+  if (timeSinceLastCall < MIN_DELAY_BETWEEN_CALLS) {
+    const waitTime = MIN_DELAY_BETWEEN_CALLS - timeSinceLastCall;
+    console.log(`⏳ Rate limiting: waiting ${Math.ceil(waitTime/1000)}s before API call`);
+    await sleep(waitTime);
   }
+
+  let lastError: any;
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      lastApiCall = Date.now();
+      const result = await fn();
+      consecutiveFailures = 0; // Reset on success
+      return result;
+    } catch (error: any) {
+      lastError = error;
+      const errorMsg = error.message || '';
+      
+      // Check if rate limited
+      if (errorMsg.includes('rate_limit') || errorMsg.includes('429')) {
+        const waitTime = extractWaitTime(errorMsg);
+        rateLimitResetTime = Date.now() + waitTime;
+        console.log(`⚠️ Rate limited. Waiting ${Math.ceil(waitTime/1000)}s before retry (attempt ${attempt + 1}/${maxRetries + 1})`);
+        
+        if (attempt < maxRetries) {
+          await sleep(waitTime);
+          continue;
+        }
+      }
+      
+      // Other errors - use exponential backoff
+      if (attempt < maxRetries) {
+        const backoffTime = Math.pow(2, attempt) * 1000;
+        console.log(`⚠️ API error, retrying in ${backoffTime/1000}s (attempt ${attempt + 1}/${maxRetries + 1})`);
+        await sleep(backoffTime);
+        continue;
+      }
+    }
+  }
+  
+  consecutiveFailures++;
+  console.log(`❌ API call failed after ${maxRetries + 1} attempts, using fallback`);
+  return useFallback();
 }
 
 export interface UserProfile {
@@ -99,7 +140,7 @@ class ProfessionalAIService {
       throw new Error('Groq API key not configured');
     }
     
-    console.log('Calling Groq API...');
+    console.log('🤖 Calling Groq API...');
     
     const response = await fetch(GROQ_URL, {
       method: 'POST',
@@ -112,12 +153,12 @@ class ProfessionalAIService {
         messages: [
           { 
             role: 'system', 
-            content: 'You are a professional nutritionist and chef. You must respond with ONLY valid JSON. No markdown formatting, no explanations, no introductory text, no "Here is the recipe" - just the JSON object directly.' 
+            content: 'You are a nutritionist. Respond with ONLY valid JSON, no markdown or text.' 
           },
           { role: 'user', content: prompt }
         ],
         temperature: 0.7,
-        max_tokens: 2048,
+        max_tokens: 1024, // Reduced from 2048 to save tokens
         top_p: 0.9,
       }),
     });
@@ -127,85 +168,40 @@ class ProfessionalAIService {
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Groq API error response:', errorText);
-      throw new Error(`Groq API Error: ${response.status}`);
+      // Include error details in thrown error for rate limit handling
+      throw new Error(`Groq API Error: ${response.status} - ${errorText}`);
     }
     
     const data = await response.json();
-    console.log('Groq response data:', data);
     const text = data.choices?.[0]?.message?.content;
-    console.log('Groq response text:', text);
     
     if (!text) {
       console.error('Empty response from Groq');
       throw new Error('Empty response from Groq');
     }
     
+    console.log('✅ Groq API response received');
     return text;
   }
 
   private createPersonalizedPrompt(mealType: string, profile: UserProfile, additionalPrefs?: string): string {
-    const restrictions = profile.dietaryRestrictions.length > 0 
-      ? profile.dietaryRestrictions.join(', ') 
-      : 'None';
-    
     const conditions = profile.healthConditions.length > 0
       ? profile.healthConditions.join(', ')
-      : 'None';
+      : '';
 
     const allergies = profile.allergies.length > 0 
       ? profile.allergies.join(', ') 
-      : 'None';
+      : '';
 
     const targetCalories = this.getTargetCalories(mealType, profile);
+    
+    // Shortened prompt to reduce token usage
+    const avoid = [conditions, allergies].filter(Boolean).join(', ') || 'none';
 
-    return `You are an expert nutritionist and chef. Create a personalized ${mealType} recipe for this user:
+    return `Create a ${mealType} recipe. Goal: ${profile.goal}. Calories: ~${targetCalories}. Avoid: ${avoid}.${additionalPrefs ? ` Prefer: ${additionalPrefs}` : ''}
 
-USER PROFILE:
-- Name: ${profile.name}
-- Age: ${profile.age}, Gender: ${profile.gender}
-- Weight: ${profile.weight}kg, Height: ${profile.height}cm
-- Goal: ${profile.goal}
-- Daily Calorie Target: ${profile.calorieTarget} kcal
-- Activity Level: ${profile.activityLevel}
-- Dietary Restrictions: ${restrictions}
-- Health Conditions: ${conditions}
-- Allergies: ${allergies}
-${additionalPrefs ? `- Special Preferences: ${additionalPrefs}` : ''}
-
-NUTRITIONAL REQUIREMENTS:
-- Target calories: ${targetCalories} kcal
-- High protein (${Math.round(profile.weight * 2)}g daily target)
-- Balanced macronutrients
-- Consider health conditions and restrictions
-- Focus on whole, unprocessed foods
-
-RECIPE REQUIREMENTS:
-- Creative and appealing name
-- Brief, appetizing description
-- Exact macro breakdown
-- Clear, step-by-step instructions
-- Realistic prep and cook times
-- 5-8 ingredients
-- 3-5 instruction steps
-- Include cooking tips for beginners
-
-CRITICAL: Respond with ONLY the JSON object below. No text before or after.
-
-{
-  "name": "Creative Recipe Name",
-  "description": "Brief, appetizing description in 1-2 sentences",
-  "calories": ${targetCalories},
-  "protein": ${Math.round(targetCalories * 0.25 / 4)},
-  "carbs": ${Math.round(targetCalories * 0.45 / 4)},
-  "fats": ${Math.round(targetCalories * 0.30 / 9)},
-  "fiber": ${Math.round(targetCalories * 0.05 / 4)},
-  "ingredients": ["1 cup ingredient with measurement", "2 tbsp ingredient", "etc"],
-  "instructions": ["Step 1: Clear instruction", "Step 2: Clear instruction", "etc"],
-  "prepTime": 15,
-  "cookTime": 20,
-  "tags": ["healthy", "high-protein", "quick"],
-  "imageEmoji": "🥗"
-}`;
+Return ONLY this JSON:
+{"name":"Recipe Name","description":"Short description","calories":${targetCalories},"protein":${Math.round(targetCalories * 0.25 / 4)},"carbs":${Math.round(targetCalories * 0.45 / 4)},"fats":${Math.round(targetCalories * 0.30 / 9)},"fiber":5,"ingredients":["ingredient 1","ingredient 2"],"instructions":["Step 1","Step 2"],"prepTime":15,"cookTime":20,"tags":["healthy"],"imageEmoji":"🍽️"}`;
   }
 
   private getTargetCalories(mealType: string, profile: UserProfile): number {

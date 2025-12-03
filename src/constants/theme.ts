@@ -145,6 +145,132 @@ export const animation = {
     slow: 400,
     extraSlow: 600,
   },
+  
+  // Easing functions for React Native Animated
+  easing: {
+    // Standard easing - for most transitions
+    standard: 'cubic-bezier(0.4, 0, 0.2, 1)',
+    // Bounce - for playful interactions
+    bounce: 'cubic-bezier(0.68, -0.55, 0.265, 1.55)',
+    // Elastic - for attention-grabbing animations
+    elastic: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+    // Enter - for elements entering the screen
+    enter: 'cubic-bezier(0, 0, 0.2, 1)',
+    // Exit - for elements leaving the screen
+    exit: 'cubic-bezier(0.4, 0, 1, 1)',
+  },
+};
+
+// Component-specific styles
+export const componentStyles = {
+  // Card styles
+  card: {
+    default: {
+      backgroundColor: colors.background,
+      borderRadius: borderRadius.lg,
+      padding: spacing.md,
+      ...shadows.soft,
+    },
+    elevated: {
+      backgroundColor: colors.background,
+      borderRadius: borderRadius.lg,
+      padding: spacing.md,
+      ...shadows.medium,
+    },
+    outlined: {
+      backgroundColor: colors.background,
+      borderRadius: borderRadius.lg,
+      padding: spacing.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+  },
+  
+  // Button styles
+  button: {
+    primary: {
+      backgroundColor: colors.primary,
+      borderRadius: borderRadius.md,
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.lg,
+    },
+    secondary: {
+      backgroundColor: colors.surface,
+      borderRadius: borderRadius.md,
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.lg,
+      borderWidth: 1,
+      borderColor: colors.primary,
+    },
+    ghost: {
+      backgroundColor: 'transparent',
+      borderRadius: borderRadius.md,
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.lg,
+    },
+  },
+  
+  // Input styles
+  input: {
+    default: {
+      backgroundColor: colors.surface,
+      borderRadius: borderRadius.md,
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    focused: {
+      borderColor: colors.primary,
+      borderWidth: 2,
+    },
+    error: {
+      borderColor: colors.error,
+      borderWidth: 2,
+    },
+  },
+  
+  // Tab bar styles
+  tabBar: {
+    container: {
+      backgroundColor: colors.background,
+      borderTopWidth: 1,
+      borderTopColor: colors.borderLight,
+      paddingVertical: spacing.xs,
+      ...shadows.soft,
+    },
+    activeTab: {
+      color: colors.primary,
+    },
+    inactiveTab: {
+      color: colors.textLight,
+    },
+  },
+};
+
+// Layout constants
+export const layout = {
+  screenPadding: spacing.md,
+  cardGap: spacing.sm,
+  sectionGap: spacing.lg,
+  maxContentWidth: 600,
+};
+
+// Nutrition color mapping
+export const nutritionColors = {
+  calories: colors.calories,
+  protein: colors.protein,
+  carbs: colors.carbs,
+  fats: colors.fats,
+  fiber: colors.fiber,
+};
+
+// Meal type colors
+export const mealTypeColors = {
+  breakfast: '#FF9800',
+  lunch: '#4CAF50',
+  dinner: '#2196F3',
+  snack: '#9C27B0',
 };
 
 export const theme = {
@@ -154,6 +280,10 @@ export const theme = {
   typography,
   shadows,
   animation,
+  componentStyles,
+  layout,
+  nutritionColors,
+  mealTypeColors,
 };
 
 export type Theme = typeof theme;

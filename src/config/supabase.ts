@@ -88,17 +88,36 @@ if (isSupabaseConfigured) {
 
 export const supabase = supabaseClient;
 
-// Database table names
+// Database table names - matches your Supabase schema exactly
 export const TABLES = {
+  // Core user tables
   USERS: 'users',
   USER_PROFILES: 'user_profiles',
+  USER_PREFERENCES: 'user_preferences',
+  
+  // Health & dietary
   DIETARY_RESTRICTIONS: 'dietary_restrictions',
+  HEALTH_CONDITIONS: 'health_conditions',
   NUTRITION_TARGETS: 'nutrition_targets',
+  
+  // Meals & recipes
   MEAL_PLANS: 'meal_plans',
   RECIPES: 'recipes',
-  SHOPPING_LISTS: 'shopping_lists',
+  RECIPE_DISEASE_SUITABILITY: 'recipe_disease_suitability',
   DAILY_LOGS: 'daily_logs',
-  USER_PREFERENCES: 'user_preferences',
+  SHOPPING_LISTS: 'shopping_lists',
+  
+  // Fitness & tracking
+  EXERCISE_ROUTINES: 'exercise_routines',
+  BODY_MEASUREMENTS: 'body_measurements',
+  WATER_INTAKE: 'water_intake',
+  SLEEP_TRACKING: 'sleep_tracking',
+  
+  // Achievements (Note: 'achievements' table may not exist - only user_achievements)
+  USER_ACHIEVEMENTS: 'user_achievements',
+  
+  // Views (read-only)
+  DAILY_PROGRESS_SUMMARY: 'daily_progress_summary',
 } as const;
 
 export default supabase;

@@ -12,7 +12,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { User } from '../types';
 import { storageService } from '../services/storageService';
+import { databaseService } from '../services/databaseService';
 import { professionalAIService, Meal, DayPlan } from '../services/professionalAIService';
+import { isSupabaseConfigured } from '../config/supabase';
 
 interface DashboardScreenProps {
   user: User;
@@ -82,8 +84,22 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
     try {
       setLoading(true);
       
-      // Load added meals from storage (My Meals - NOT the AI suggestions cache)
-      const todayMyMeals = await storageService.getMyMealsToday(user.id);
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Load added meals from Supabase first, fallback to local storage
+      let todayMyMeals: Meal[] = [];
+      if (isSupabaseConfigured) {
+        try {
+          todayMyMeals = await databaseService.getMyMeals(today);
+          console.log('📥 Dashboard: Loaded', todayMyMeals.length, 'meals from Supabase');
+        } catch (error) {
+          console.log('Supabase failed, using local storage');
+          todayMyMeals = await storageService.getMyMealsToday(user.id);
+        }
+      } else {
+        todayMyMeals = await storageService.getMyMealsToday(user.id);
+      }
+      
       setMyMeals(todayMyMeals);
       
       // Track which meal types are already added
@@ -136,7 +152,34 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
 
   const loadDailyTotals = async () => {
     const today = new Date().toISOString().split('T')[0];
-    const totals = await storageService.getDailyNutritionTotals(user.id, today);
+    
+    // Get logs from Supabase first
+    let logs: any[] = [];
+    if (isSupabaseConfigured) {
+      try {
+        logs = await databaseService.getDailyLogs(today);
+      } catch (error) {
+        // Fallback to local
+        const localTotals = await storageService.getDailyNutritionTotals(user.id, today);
+        setDailyTotals(localTotals);
+        return;
+      }
+    } else {
+      const localTotals = await storageService.getDailyNutritionTotals(user.id, today);
+      setDailyTotals(localTotals);
+      return;
+    }
+    
+    // Calculate totals from logs
+    const totals = { calories: 0, protein: 0, carbs: 0, fats: 0 };
+    logs.forEach(log => {
+      if (log.nutrition_consumed) {
+        totals.calories += log.nutrition_consumed.calories || 0;
+        totals.protein += log.nutrition_consumed.protein || 0;
+        totals.carbs += log.nutrition_consumed.carbs || 0;
+        totals.fats += log.nutrition_consumed.fats || 0;
+      }
+    });
     setDailyTotals(totals);
   };
 

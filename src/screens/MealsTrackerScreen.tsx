@@ -12,7 +12,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { User, DailyLog } from '../types';
 import { storageService } from '../services/storageService';
+import { databaseService } from '../services/databaseService';
 import { professionalAIService, Meal, UserProfile } from '../services/professionalAIService';
+import { isSupabaseConfigured } from '../config/supabase';
 
 interface MealsTrackerScreenProps {
   user: User;
@@ -65,7 +67,24 @@ const MealsTrackerScreen: React.FC<MealsTrackerScreenProps> = ({
 
   const loadDailyData = async () => {
     const dateStr = selectedDate.toISOString().split('T')[0];
-    const logs = await storageService.getDailyLogs(user.id, dateStr);
+    
+    // Try to get logs from Supabase first, then fall back to local storage
+    let logs: DailyLog[] = [];
+    
+    if (isSupabaseConfigured) {
+      try {
+        logs = await databaseService.getDailyLogs(dateStr);
+        console.log('📥 Loaded', logs.length, 'meals from Supabase for', dateStr);
+      } catch (error) {
+        console.log('Failed to load from Supabase, using local storage');
+      }
+    }
+    
+    // If no logs from Supabase, try local storage
+    if (logs.length === 0) {
+      logs = await storageService.getDailyLogs(user.id, dateStr);
+      console.log('📥 Loaded', logs.length, 'meals from local storage for', dateStr);
+    }
     
     // Remove duplicates by meal_type (keep only the latest)
     const uniqueLogs = logs.reduce((acc: DailyLog[], log) => {
@@ -74,7 +93,9 @@ const MealsTrackerScreen: React.FC<MealsTrackerScreenProps> = ({
         acc.push(log);
       } else {
         // Keep the newer one
-        if (new Date(log.created_at) > new Date(acc[existingIndex].created_at)) {
+        const existingTime = acc[existingIndex].created_at ? new Date(acc[existingIndex].created_at) : new Date(0);
+        const newTime = log.created_at ? new Date(log.created_at) : new Date(0);
+        if (newTime > existingTime) {
           acc[existingIndex] = log;
         }
       }
@@ -83,7 +104,24 @@ const MealsTrackerScreen: React.FC<MealsTrackerScreenProps> = ({
     
     setDailyLogs(uniqueLogs);
     
-    const totals = await storageService.getDailyNutritionTotals(user.id, dateStr);
+    // Calculate totals from the logs we have
+    const totals = {
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fats: 0,
+      mealsCount: uniqueLogs.length,
+    };
+    
+    uniqueLogs.forEach(log => {
+      if (log.nutrition_consumed) {
+        totals.calories += log.nutrition_consumed.calories || 0;
+        totals.protein += log.nutrition_consumed.protein || 0;
+        totals.carbs += log.nutrition_consumed.carbs || 0;
+        totals.fats += log.nutrition_consumed.fats || 0;
+      }
+    });
+    
     setDailyTotals(totals);
   };
 
@@ -97,7 +135,19 @@ const MealsTrackerScreen: React.FC<MealsTrackerScreenProps> = ({
       const date = new Date(startOfWeek);
       date.setDate(startOfWeek.getDate() + i);
       const dateStr = date.toISOString().split('T')[0];
-      const logs = await storageService.getDailyLogs(user.id, dateStr);
+      
+      // Try Supabase first
+      let logs: DailyLog[] = [];
+      if (isSupabaseConfigured) {
+        try {
+          logs = await databaseService.getDailyLogs(dateStr);
+        } catch (error) {
+          logs = await storageService.getDailyLogs(user.id, dateStr);
+        }
+      } else {
+        logs = await storageService.getDailyLogs(user.id, dateStr);
+      }
+      
       weekData.push(logs.length > 0);
     }
     setWeeklyData(weekData);
@@ -114,6 +164,11 @@ const MealsTrackerScreen: React.FC<MealsTrackerScreenProps> = ({
           style: 'destructive',
           onPress: async () => {
             const dateStr = selectedDate.toISOString().split('T')[0];
+            
+            // Remove from both Supabase and local storage
+            if (isSupabaseConfigured) {
+              await databaseService.deleteDailyLog(logId);
+            }
             await storageService.removeMealFromLog(user.id, dateStr, logId);
             await loadDailyData();
           },

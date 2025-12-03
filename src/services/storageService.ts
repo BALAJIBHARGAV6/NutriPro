@@ -2,6 +2,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User, Recipe, DailyLog } from '../types';
 import { Meal } from './professionalAIService';
 import { databaseService } from './databaseService';
+import { isSupabaseConfigured } from '../config/supabase';
+
+// Generate a proper UUID v4
+function generateUUID(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
 
 const KEYS = {
   USER: 'nutripro_user',
@@ -14,12 +24,19 @@ const KEYS = {
 class StorageService {
   // User Management
   async saveUser(user: User): Promise<void> {
+    // Save locally first
     await AsyncStorage.setItem(KEYS.USER, JSON.stringify(user));
-    // Sync to database
-    try {
-      await databaseService.saveUserProfile(user);
-    } catch (error) {
-      console.log('Database sync failed, data saved locally:', error);
+    
+    // Sync to Supabase database
+    if (isSupabaseConfigured) {
+      try {
+        const saved = await databaseService.saveUserProfile(user);
+        if (saved) {
+          console.log('✅ User profile synced to Supabase');
+        }
+      } catch (error) {
+        console.log('Database sync failed for user:', error);
+      }
     }
   }
 
@@ -134,7 +151,7 @@ class StorageService {
     const existingIndex = existingLogs.findIndex(log => log.meal_type === meal.mealType);
     
     const newLog: DailyLog = {
-      id: `log_${Date.now()}`,
+      id: generateUUID(), // Use proper UUID for Supabase compatibility
       user_id: userId,
       log_date: today,
       meal_type: meal.mealType,
@@ -162,6 +179,7 @@ class StorageService {
       existingLogs.push(newLog);
     }
     
+    // Save locally first
     await AsyncStorage.setItem(key, JSON.stringify(existingLogs));
     
     // Also add to My Meals
@@ -171,12 +189,17 @@ class StorageService {
     await this.incrementMealsLogged(userId);
     await this.updateStreak(userId);
 
-    // Sync to database
-    try {
-      await databaseService.saveDailyLog(newLog);
-      await databaseService.saveRecipe(meal);
-    } catch (error) {
-      console.log('Database sync failed for meal log:', error);
+    // Sync to Supabase database
+    if (isSupabaseConfigured) {
+      try {
+        const saved = await databaseService.saveDailyLog(newLog);
+        if (saved) {
+          await databaseService.saveRecipe(meal);
+          console.log('✅ Meal synced to Supabase');
+        }
+      } catch (error) {
+        console.log('Database sync failed for meal log:', error);
+      }
     }
   }
 

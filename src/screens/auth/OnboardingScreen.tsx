@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { storageService } from '../../services/storageService';
+import { databaseService } from '../../services/databaseService';
+import { supabase, isSupabaseConfigured } from '../../config/supabase';
 import { User } from '../../types';
 
 interface OnboardingScreenProps {
@@ -82,10 +84,22 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }) => {
       const heightCm = units === 'imperial' ? parseFloat(height) * 2.54 : parseFloat(height);
       const bmi = weightKg / Math.pow(heightCm / 100, 2);
 
-      // Create user object
+      // Get the authenticated user ID from Supabase
+      let userId = 'user_' + Date.now(); // Fallback for demo mode
+      let userEmail = email;
+      
+      if (isSupabaseConfigured) {
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (authUser) {
+          userId = authUser.id;
+          userEmail = authUser.email || email;
+        }
+      }
+
+      // Create user object with Supabase auth ID
       const newUser: User = {
-        id: 'user_' + Date.now(),
-        email: email,
+        id: userId,
+        email: userEmail,
         fullName: fullName,
         age: parseInt(age),
         gender: gender,
@@ -96,17 +110,26 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }) => {
         diseases: conditions,
         allergies: allergies,
         healthGoals: [goal],
+        goal: goal as 'maintain' | 'lose' | 'gain',
         streak: 0,
         longestStreak: 0,
         totalMealsLogged: 0,
         registrationDate: new Date().toISOString(),
         lastLogin: new Date().toISOString(),
         unitsPreference: units,
+        onboardingCompleted: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
 
-      // Save to storage
+      // Save to Supabase database
+      const saved = await databaseService.saveUserProfile(newUser);
+      
+      if (saved) {
+        console.log('✅ User profile saved to Supabase');
+      }
+
+      // Also save to local storage
       await storageService.saveUser(newUser);
 
       Alert.alert('Success!', 'Your profile has been set up successfully!');
