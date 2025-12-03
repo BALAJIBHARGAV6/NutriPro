@@ -71,11 +71,12 @@ const styles = StyleSheet.create({
   
   // Style variants
   default: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.background,
+    ...shadows.card,
   },
   elevated: {
     backgroundColor: colors.background,
-    ...shadows.md,
+    ...shadows.medium,
   },
   outlined: {
     backgroundColor: colors.background,

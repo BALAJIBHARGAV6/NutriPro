@@ -11,6 +11,7 @@ import OnboardingScreen from './src/screens/auth/OnboardingScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import MealsTrackerScreen from './src/screens/MealsTrackerScreen';
 import RecipesListScreen from './src/screens/RecipesListScreen';
+import ExerciseScreen from './src/screens/ExerciseScreen';
 import ProfileScreenNew from './src/screens/ProfileScreenNew';
 import TabBar from './src/components/TabBar';
 import MealDetailModal from './src/components/MealDetailModal';
@@ -23,7 +24,7 @@ import { supabase, isSupabaseConfigured } from './src/config/supabase';
 
 export default function App() {
   const [screen, setScreen] = useState<'loading' | 'auth' | 'onboarding' | 'main'>('loading');
-  const [activeTab, setActiveTab] = useState<'home' | 'meals' | 'recipes' | 'profile'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'meals' | 'recipes' | 'exercise' | 'profile'>('home');
   const [user, setUser] = useState<User | null>(null);
   const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null);
   const [showMealDetail, setShowMealDetail] = useState(false);
@@ -352,7 +353,7 @@ export default function App() {
             onMealPress={(meal) => { setSelectedMeal(meal); setShowMealDetail(true); }}
             onAddToMeals={handleAddToMeals}
             onNavigateToRecipes={() => setActiveTab('recipes')}
-            onNavigateToExercise={() => {}}
+            onNavigateToExercise={() => setActiveTab('exercise')}
           />
         )}
         
@@ -360,6 +361,7 @@ export default function App() {
           <MealsTrackerScreen
             user={user}
             onViewDetails={(log) => {}}
+            onUpdateUser={handleUpdateUser}
           />
         )}
         
@@ -369,6 +371,10 @@ export default function App() {
             onRecipePress={(recipe) => { setSelectedMeal(recipe); setShowMealDetail(true); }}
             onAddToMeals={handleAddToMeals}
           />
+        )}
+        
+        {activeTab === 'exercise' && user && (
+          <ExerciseScreen user={user} />
         )}
         
         {activeTab === 'profile' && user && (

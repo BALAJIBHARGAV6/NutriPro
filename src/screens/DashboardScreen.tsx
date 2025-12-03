@@ -7,7 +7,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   RefreshControl,
-  Image,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { User } from '../types';
@@ -15,6 +15,9 @@ import { storageService } from '../services/storageService';
 import { databaseService } from '../services/databaseService';
 import { professionalAIService, Meal, DayPlan } from '../services/professionalAIService';
 import { isSupabaseConfigured } from '../config/supabase';
+import { colors, shadows, spacing, borderRadius, typography } from '../constants/theme';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface DashboardScreenProps {
   user: User;
@@ -232,55 +235,84 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
     return diseaseTips[Math.floor(Math.random() * diseaseTips.length)];
   };
 
-  // Render a SUGGESTED meal card (AI generated, can be regenerated)
+  // Render a SUGGESTED meal card (AI generated, can be regenerated) - IMPROVED DESIGN
   const renderSuggestedMealCard = (meal: Meal | undefined, title: string, icon: string, mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack') => {
     if (!meal) return null;
-    if (addedMealTypes.has(mealType)) return null; // Don't show suggestion if already added
+    if (addedMealTypes.has(mealType)) return null;
     
     return (
-      <View style={styles.mealCard}>
-        <View style={styles.mealHeader}>
-          <View style={styles.mealHeaderLeft}>
-            <Text style={styles.mealIcon}>{icon}</Text>
-            <Text style={styles.mealTitle}>{title}</Text>
-            <View style={styles.aiTag}>
-              <Text style={styles.aiTagText}>🤖 AI</Text>
+      <View style={styles.suggestionCard}>
+        {/* Card Header with Meal Type */}
+        <View style={styles.suggestionHeader}>
+          <View style={styles.suggestionTypeContainer}>
+            <Text style={styles.suggestionTypeIcon}>{icon}</Text>
+            <Text style={styles.suggestionTypeText}>{title}</Text>
+          </View>
+          <View style={styles.suggestionAIBadge}>
+            <Text style={styles.suggestionAIText}>🤖 AI</Text>
+          </View>
+        </View>
+        
+        {/* Main Content */}
+        <View style={styles.suggestionContent}>
+          <View style={styles.suggestionEmojiCircle}>
+            <Text style={styles.suggestionEmoji}>{meal.emoji || meal.imageEmoji || '🍽️'}</Text>
+          </View>
+          <Text style={styles.suggestionName} numberOfLines={2}>{meal.name}</Text>
+          
+          {/* Nutrition Pills */}
+          <View style={styles.suggestionNutrition}>
+            <View style={styles.nutritionPillCalories}>
+              <Text style={styles.nutritionPillText}>🔥 {meal.calories} cal</Text>
             </View>
           </View>
-          <TouchableOpacity 
-            style={styles.regenerateBtn}
-            onPress={() => regenerateMeal(mealType)}
-            disabled={regenerating}
-          >
-            <Text style={styles.regenerateBtnText}>{regenerating ? '⏳' : '🔄 New'}</Text>
-          </TouchableOpacity>
-        </View>
-        
-        <View style={styles.mealContent}>
-          <Text style={styles.mealEmoji}>{meal.emoji || meal.imageEmoji || '🍽️'}</Text>
-          <View style={styles.mealInfo}>
-            <Text style={styles.mealName}>{meal.name}</Text>
-            <Text style={styles.mealMacros}>
-              {meal.calories} cal | P: {meal.protein}g | C: {meal.carbs}g | F: {meal.fats}g
-            </Text>
+          
+          {/* Macro Row */}
+          <View style={styles.suggestionMacroRow}>
+            <View style={styles.macroItem}>
+              <Text style={styles.macroValue}>{meal.protein}g</Text>
+              <Text style={styles.macroLabel}>Protein</Text>
+            </View>
+            <View style={styles.macroDivider} />
+            <View style={styles.macroItem}>
+              <Text style={styles.macroValue}>{meal.carbs}g</Text>
+              <Text style={styles.macroLabel}>Carbs</Text>
+            </View>
+            <View style={styles.macroDivider} />
+            <View style={styles.macroItem}>
+              <Text style={styles.macroValue}>{meal.fats}g</Text>
+              <Text style={styles.macroLabel}>Fats</Text>
+            </View>
           </View>
         </View>
         
-        <View style={styles.mealActions}>
+        {/* Action Buttons */}
+        <View style={styles.suggestionActions}>
           <TouchableOpacity
-            style={styles.viewRecipeBtn}
+            style={styles.suggestionViewBtn}
             onPress={() => onMealPress(meal)}
           >
-            <Text style={styles.viewRecipeBtnText}>View Recipe</Text>
+            <Text style={styles.suggestionViewBtnText}>👁️ View</Text>
           </TouchableOpacity>
           
           <TouchableOpacity
-            style={styles.addMealBtn}
+            style={styles.suggestionAddBtn}
             onPress={() => handleAddToMeals(meal)}
           >
-            <Text style={styles.addMealBtnText}>+ Add to My Meals</Text>
+            <Text style={styles.suggestionAddBtnText}>+ Add</Text>
           </TouchableOpacity>
         </View>
+        
+        {/* Refresh Button */}
+        <TouchableOpacity 
+          style={styles.suggestionRefresh}
+          onPress={() => regenerateMeal(mealType)}
+          disabled={regenerating}
+        >
+          <Text style={styles.suggestionRefreshText}>
+            {regenerating ? '⏳ Generating...' : '🔄 New Suggestion'}
+          </Text>
+        </TouchableOpacity>
       </View>
     );
   };
@@ -302,8 +334,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
         <View style={styles.mealContent}>
           <Text style={styles.mealEmoji}>{meal.emoji || meal.imageEmoji || '🍽️'}</Text>
           <View style={styles.mealInfo}>
-            <Text style={styles.mealName}>{meal.name}</Text>
-            <Text style={styles.mealMacros}>
+            <Text style={styles.mealName} numberOfLines={2} ellipsizeMode="tail">{meal.name}</Text>
+            <Text style={styles.mealMacros} numberOfLines={1}>
               {meal.calories} cal | P: {meal.protein}g | C: {meal.carbs}g | F: {meal.fats}g
             </Text>
           </View>
@@ -313,7 +345,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
           style={styles.viewRecipeBtnFull}
           onPress={() => onMealPress(meal)}
         >
-          <Text style={styles.viewRecipeBtnText}>View Full Recipe</Text>
+          <Text style={styles.viewRecipeBtnText}>View Recipe</Text>
         </TouchableOpacity>
       </View>
     );
@@ -324,94 +356,184 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
     return myMeals.find(m => m.mealType === mealType);
   };
 
+  // Circular Progress Component
+  const CircularProgress = ({ progress, size = 120, strokeWidth = 10 }: { progress: number; size?: number; strokeWidth?: number }) => {
+    const radius = (size - strokeWidth) / 2;
+    const circumference = radius * 2 * Math.PI;
+    const progressValue = Math.min(progress, 100);
+    
+    return (
+      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={[styles.circularBg, { width: size, height: size, borderRadius: size / 2, borderWidth: strokeWidth }]} />
+        <View style={[styles.circularProgress, { 
+          width: size, 
+          height: size, 
+          borderRadius: size / 2, 
+          borderWidth: strokeWidth,
+          borderColor: colors.primary,
+          borderRightColor: 'transparent',
+          borderBottomColor: progressValue > 25 ? colors.primary : 'transparent',
+          borderLeftColor: progressValue > 50 ? colors.primary : 'transparent',
+          borderTopColor: progressValue > 75 ? colors.primary : 'transparent',
+          transform: [{ rotate: '-45deg' }],
+        }]} />
+        <View style={styles.circularCenter}>
+          <Text style={styles.circularValue}>{dailyTotals.calories}</Text>
+          <Text style={styles.circularLabel}>of {calorieTarget}</Text>
+        </View>
+      </View>
+    );
+  };
+
+  // Macro Progress Bar
+  const MacroBar = ({ label, value, max, color }: { label: string; value: number; max: number; color: string }) => (
+    <View style={styles.macroBarContainer}>
+      <View style={styles.macroBarHeader}>
+        <Text style={styles.macroBarLabel}>{label}</Text>
+        <Text style={styles.macroBarValue}>{value}g</Text>
+      </View>
+      <View style={styles.macroBarTrack}>
+        <View style={[styles.macroBarFill, { width: `${Math.min((value / max) * 100, 100)}%`, backgroundColor: color }]} />
+      </View>
+    </View>
+  );
+
   if (loading) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#84C225" />
-        <Text style={styles.loadingText}>Creating your personalized plan...</Text>
+        <View style={styles.loadingContent}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Creating your personalized plan...</Text>
+        </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView
         style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
         }
       >
-        {/* Header */}
+        {/* Header Section */}
         <View style={styles.header}>
-          <View>
-            <Text style={styles.welcomeText}>👤 Welcome, {user.fullName}!</Text>
-            <Text style={styles.streakText}>Streak: 🔥 {user.streak || 0} days</Text>
+          <View style={styles.headerContent}>
+            <View style={styles.headerLeft}>
+              <Text style={styles.greeting}>{(() => {
+                const hour = new Date().getHours();
+                if (hour >= 5 && hour < 12) return 'Good Morning';
+                if (hour >= 12 && hour < 17) return 'Good Afternoon';
+                if (hour >= 17 && hour < 21) return 'Good Evening';
+                return 'Good Night';
+              })()},</Text>
+              <Text style={styles.userName}>{user.fullName || 'User'}</Text>
+            </View>
+            <View style={styles.streakBadge}>
+              <Text style={styles.streakNumber}>{user.streak || 0}</Text>
+              <Text style={styles.streakLabel}>day streak</Text>
+            </View>
+          </View>
+          <Text style={styles.dateText}>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</Text>
+        </View>
+
+        {/* Stats Overview Cards */}
+        <View style={styles.statsSection}>
+          <Text style={styles.sectionTitle}>Today's Progress</Text>
+          
+          <View style={styles.statsGrid}>
+            {/* Calories Card */}
+            <View style={[styles.statsCard, styles.caloriesCard]}>
+              <CircularProgress progress={(dailyTotals.calories / calorieTarget) * 100} />
+              <Text style={styles.statsCardLabel}>Calories</Text>
+            </View>
+            
+            {/* Macros Card */}
+            <View style={[styles.statsCard, styles.macrosCard]}>
+              <MacroBar label="Protein" value={dailyTotals.protein} max={Math.round(calorieTarget * 0.25 / 4)} color={colors.protein} />
+              <MacroBar label="Carbs" value={dailyTotals.carbs} max={Math.round(calorieTarget * 0.45 / 4)} color={colors.carbs} />
+              <MacroBar label="Fats" value={dailyTotals.fats} max={Math.round(calorieTarget * 0.30 / 9)} color={colors.fats} />
+            </View>
           </View>
         </View>
 
-        {/* Today's Overview */}
-        <View style={styles.overviewCard}>
-          <Text style={styles.sectionTitle}>📊 TODAY'S OVERVIEW</Text>
-          <View style={styles.overviewStats}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{dailyTotals.calories}</Text>
-              <Text style={styles.statLabel}>/ {calorieTarget} cal</Text>
+        {/* Quick Actions */}
+        <View style={styles.quickActions}>
+          <TouchableOpacity style={styles.quickActionBtn} onPress={onNavigateToRecipes}>
+            <View style={styles.quickActionIcon}>
+              <Text style={styles.quickActionEmoji}>+</Text>
             </View>
-            <View style={styles.progressBar}>
-              <View 
-                style={[
-                  styles.progressFill, 
-                  { width: `${Math.min((dailyTotals.calories / calorieTarget) * 100, 100)}%` }
-                ]} 
-              />
+            <Text style={styles.quickActionText}>Log Food</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.quickActionBtn, styles.quickActionOutline]} onPress={onNavigateToExercise}>
+            <View style={[styles.quickActionIcon, styles.quickActionIconOutline]}>
+              <Text style={[styles.quickActionEmoji, { color: colors.primary }]}>♡</Text>
             </View>
-          </View>
-          <View style={styles.macroRow}>
-            <Text style={styles.macroText}>P: {dailyTotals.protein}g</Text>
-            <Text style={styles.macroText}>C: {dailyTotals.carbs}g</Text>
-            <Text style={styles.macroText}>F: {dailyTotals.fats}g</Text>
-          </View>
-        </View>
-
-        {/* My Meals Section - Show added meals first */}
-        {myMeals.length > 0 && (
-          <View style={styles.sectionContainer}>
-            <Text style={styles.sectionHeader}>🍽️ MY MEALS TODAY</Text>
-            {getAddedMeal('breakfast') && renderAddedMealCard(getAddedMeal('breakfast')!, 'BREAKFAST', '🍳')}
-            {getAddedMeal('lunch') && renderAddedMealCard(getAddedMeal('lunch')!, 'LUNCH', '🍱')}
-            {getAddedMeal('snack') && renderAddedMealCard(getAddedMeal('snack')!, 'SNACKS', '🍎')}
-            {getAddedMeal('dinner') && renderAddedMealCard(getAddedMeal('dinner')!, 'DINNER', '🍽️')}
-          </View>
-        )}
-
-        {/* AI Suggestions Section - Show suggestions for meal types not yet added */}
-        {(!addedMealTypes.has('breakfast') || !addedMealTypes.has('lunch') || !addedMealTypes.has('dinner') || !addedMealTypes.has('snack')) && (
-          <View style={styles.sectionContainer}>
-            <Text style={styles.sectionHeader}>🤖 AI SUGGESTIONS</Text>
-            <Text style={styles.sectionSubtext}>Tap "🔄 New" for different options</Text>
-            {renderSuggestedMealCard(suggestedPlan?.breakfast, 'BREAKFAST', '🍳', 'breakfast')}
-            {renderSuggestedMealCard(suggestedPlan?.lunch, 'LUNCH', '🍱', 'lunch')}
-            {renderSuggestedMealCard(suggestedPlan?.snacks?.[0], 'SNACKS', '🍎', 'snack')}
-            {renderSuggestedMealCard(suggestedPlan?.dinner, 'DINNER', '🍽️', 'dinner')}
-          </View>
-        )}
-
-        {/* Exercise Section */}
-        <View style={styles.exerciseCard}>
-          <Text style={styles.sectionTitle}>💪 TODAY'S EXERCISE</Text>
-          <Text style={styles.exerciseTitle}>Morning Cardio - 30 minutes</Text>
-          <Text style={styles.exerciseItem}>• Brisk Walking: 15 mins</Text>
-          <Text style={styles.exerciseItem}>• Cycling: 15 mins</Text>
-          <TouchableOpacity style={styles.startWorkoutBtn} onPress={onNavigateToExercise}>
-            <Text style={styles.startWorkoutBtnText}>Start Workout</Text>
+            <Text style={[styles.quickActionText, { color: colors.textPrimary }]}>Exercise</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Health Tip */}
+        {/* My Meals Section */}
+        {myMeals.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>My Meals Today</Text>
+              <View style={styles.mealCount}>
+                <Text style={styles.mealCountText}>{myMeals.length} logged</Text>
+              </View>
+            </View>
+            <View style={styles.mealsTimeline}>
+              {getAddedMeal('breakfast') && renderAddedMealCard(getAddedMeal('breakfast')!, 'Breakfast', '🍳')}
+              {getAddedMeal('lunch') && renderAddedMealCard(getAddedMeal('lunch')!, 'Lunch', '🥗')}
+              {getAddedMeal('snack') && renderAddedMealCard(getAddedMeal('snack')!, 'Snack', '🍎')}
+              {getAddedMeal('dinner') && renderAddedMealCard(getAddedMeal('dinner')!, 'Dinner', '🍽️')}
+            </View>
+          </View>
+        )}
+
+        {/* AI Suggestions Section */}
+        {(!addedMealTypes.has('breakfast') || !addedMealTypes.has('lunch') || !addedMealTypes.has('dinner') || !addedMealTypes.has('snack')) && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Suggested for You</Text>
+              <TouchableOpacity onPress={() => generateSuggestions(addedMealTypes)}>
+                <Text style={styles.refreshLink}>Refresh</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.sectionSubtext}>AI-powered recommendations based on your goals</Text>
+            
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false} 
+              style={styles.suggestionsScroll}
+              contentContainerStyle={styles.suggestionsScrollContent}
+            >
+              {!addedMealTypes.has('breakfast') && suggestedPlan?.breakfast && renderSuggestedMealCard(suggestedPlan.breakfast, 'Breakfast', '🍳', 'breakfast')}
+              {!addedMealTypes.has('lunch') && suggestedPlan?.lunch && renderSuggestedMealCard(suggestedPlan.lunch, 'Lunch', '🥗', 'lunch')}
+              {!addedMealTypes.has('snack') && suggestedPlan?.snacks?.[0] && renderSuggestedMealCard(suggestedPlan.snacks[0], 'Snack', '🍎', 'snack')}
+              {!addedMealTypes.has('dinner') && suggestedPlan?.dinner && renderSuggestedMealCard(suggestedPlan.dinner, 'Dinner', '🍽️', 'dinner')}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* Health Tip Card */}
         <View style={styles.tipCard}>
-          <Text style={styles.sectionTitle}>💡 HEALTH TIP</Text>
+          <View style={styles.tipHeader}>
+            <Text style={styles.tipIcon}>💡</Text>
+            <Text style={styles.tipTitle}>Daily Tip</Text>
+          </View>
           <Text style={styles.tipText}>{getHealthTip()}</Text>
         </View>
+
+        <View style={styles.bottomSpacer} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -420,291 +542,559 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
   scrollView: {
     flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: spacing.xl,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
+  },
+  loadingContent: {
+    alignItems: 'center',
   },
   loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#666',
+    marginTop: spacing.md,
+    fontSize: typography.fontSize.base,
+    color: colors.textSecondary,
   },
+  
+  // Header
   header: {
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.lg,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  greeting: {
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
+    marginBottom: 2,
+  },
+  userName: {
+    fontSize: typography.fontSize['2xl'],
+    fontWeight: typography.fontWeight.bold,
+    color: colors.textPrimary,
+  },
+  streakBadge: {
+    backgroundColor: colors.primaryPale,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+  },
+  streakNumber: {
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.primary,
+  },
+  streakLabel: {
+    fontSize: typography.fontSize.xs,
+    color: colors.primaryDark,
+  },
+  dateText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.textMuted,
+    marginTop: spacing.xs,
+  },
+  
+  // Stats Section
+  statsSection: {
+    paddingHorizontal: spacing.lg,
+    marginTop: spacing.md,
+  },
+  sectionTitle: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textPrimary,
+    marginBottom: spacing.md,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  statsCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: borderRadius.xl,
+    padding: spacing.md,
+    ...shadows.card,
+  },
+  caloriesCard: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  macrosCard: {
+    flex: 1.2,
+    justifyContent: 'center',
+  },
+  statsCardLabel: {
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
+    marginTop: spacing.sm,
+  },
+  
+  // Circular Progress
+  circularBg: {
+    position: 'absolute',
+    borderColor: colors.surfaceLight,
+  },
+  circularProgress: {
+    position: 'absolute',
+  },
+  circularCenter: {
+    alignItems: 'center',
+  },
+  circularValue: {
+    fontSize: typography.fontSize['2xl'],
+    fontWeight: typography.fontWeight.bold,
+    color: colors.textPrimary,
+  },
+  circularLabel: {
+    fontSize: typography.fontSize.xs,
+    color: colors.textMuted,
+  },
+  
+  // Macro Bars
+  macroBarContainer: {
+    marginBottom: spacing.sm,
+  },
+  macroBarHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  macroBarLabel: {
+    fontSize: typography.fontSize.xs,
+    color: colors.textSecondary,
+  },
+  macroBarValue: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textPrimary,
+  },
+  macroBarTrack: {
+    height: 6,
+    backgroundColor: colors.surfaceLight,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  macroBarFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  
+  // Quick Actions
+  quickActions: {
+    flexDirection: 'row',
+    paddingHorizontal: spacing.lg,
+    marginTop: spacing.lg,
+    gap: spacing.sm,
+  },
+  quickActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.lg,
+    gap: spacing.xs,
+  },
+  quickActionOutline: {
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  quickActionIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickActionIconOutline: {
+    backgroundColor: colors.primaryPale,
+  },
+  quickActionEmoji: {
+    fontSize: 16,
+    color: colors.textOnPrimary,
+    fontWeight: typography.fontWeight.bold,
+  },
+  quickActionText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textOnPrimary,
+  },
+  
+  // Sections
+  section: {
+    marginTop: spacing.xl,
+    paddingHorizontal: spacing.lg,
+  },
+  sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#84C225',
+    marginBottom: spacing.xs,
   },
-  welcomeText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: 'white',
+  sectionSubtext: {
+    fontSize: typography.fontSize.sm,
+    color: colors.textMuted,
+    marginBottom: spacing.md,
   },
-  streakText: {
-    fontSize: 14,
-    color: '#E8F5D9',
-    marginTop: 4,
+  refreshLink: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary,
+    fontWeight: typography.fontWeight.medium,
   },
-  overviewCard: {
-    backgroundColor: 'white',
-    margin: 16,
-    padding: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  mealCount: {
+    backgroundColor: colors.primaryPale,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: borderRadius.full,
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 12,
+  mealCountText: {
+    fontSize: typography.fontSize.xs,
+    color: colors.primaryDark,
+    fontWeight: typography.fontWeight.medium,
   },
-  overviewStats: {
-    marginBottom: 8,
+  mealsTimeline: {
+    marginTop: spacing.sm,
   },
-  statItem: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    marginBottom: 8,
+  suggestionsScroll: {
+    marginHorizontal: -spacing.lg,
   },
-  statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#84C225',
+  suggestionsScrollContent: {
+    paddingHorizontal: spacing.lg,
+    paddingRight: spacing.xl,
+    paddingBottom: spacing.md,
   },
-  statLabel: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 4,
-  },
-  progressBar: {
-    height: 8,
-    backgroundColor: '#E0E0E0',
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#84C225',
-    borderRadius: 4,
-  },
-  macroRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: 12,
-  },
-  macroText: {
-    fontSize: 14,
-    color: '#666',
-  },
+  
+  // Meal Cards
   mealCard: {
-    backgroundColor: 'white',
-    marginHorizontal: 16,
-    marginBottom: 12,
-    padding: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: '#FFFFFF',
+    borderRadius: borderRadius.xl,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    ...shadows.card,
+    width: SCREEN_WIDTH * 0.75,
+    marginRight: spacing.sm,
+  },
+  addedMealCard: {
+    width: '100%',
+    marginRight: 0,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary,
   },
   mealHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  mealIcon: {
-    fontSize: 20,
-    marginRight: 8,
-  },
-  mealTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#666',
-  },
-  mealContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  mealEmoji: {
-    fontSize: 48,
-    marginRight: 16,
-  },
-  mealInfo: {
-    flex: 1,
-  },
-  mealName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 4,
-  },
-  mealMacros: {
-    fontSize: 12,
-    color: '#666',
-  },
-  mealActions: {
-    flexDirection: 'row',
     justifyContent: 'space-between',
-  },
-  viewRecipeBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderWidth: 1,
-    borderColor: '#84C225',
-    borderRadius: 8,
-    marginRight: 8,
-  },
-  viewRecipeBtnText: {
-    textAlign: 'center',
-    color: '#84C225',
-    fontWeight: '600',
-  },
-  addMealBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    backgroundColor: '#84C225',
-    borderRadius: 8,
-    marginLeft: 8,
-  },
-  addMealBtnDisabled: {
-    backgroundColor: '#E8F5D9',
-  },
-  addMealBtnText: {
-    textAlign: 'center',
-    color: 'white',
-    fontWeight: '600',
-  },
-  addMealBtnTextDisabled: {
-    color: '#2E7D32',
-  },
-  exerciseCard: {
-    backgroundColor: 'white',
-    marginHorizontal: 16,
-    marginBottom: 12,
-    padding: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  exerciseTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
-  },
-  exerciseItem: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 4,
-  },
-  startWorkoutBtn: {
-    marginTop: 12,
-    paddingVertical: 12,
-    backgroundColor: '#FF6B35',
-    borderRadius: 8,
-  },
-  startWorkoutBtnText: {
-    textAlign: 'center',
-    color: 'white',
-    fontWeight: 'bold',
-  },
-  tipCard: {
-    backgroundColor: '#FFF3E0',
-    marginHorizontal: 16,
-    marginBottom: 24,
-    padding: 16,
-    borderRadius: 12,
-  },
-  tipText: {
-    fontSize: 14,
-    color: '#E65100',
-    lineHeight: 20,
-  },
-  // New styles for My Meals vs AI Suggestions
-  sectionContainer: {
-    marginTop: 8,
-  },
-  sectionHeader: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginHorizontal: 16,
-    marginBottom: 4,
-  },
-  sectionSubtext: {
-    fontSize: 12,
-    color: '#666',
-    marginHorizontal: 16,
-    marginBottom: 8,
+    alignItems: 'center',
+    marginBottom: spacing.sm,
   },
   mealHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
   },
+  mealIcon: {
+    fontSize: 20,
+    marginRight: spacing.xs,
+  },
+  mealTitle: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
   aiTag: {
-    backgroundColor: '#E3F2FD',
-    paddingHorizontal: 8,
+    backgroundColor: colors.info + '15',
+    paddingHorizontal: spacing.xs,
     paddingVertical: 2,
-    borderRadius: 10,
-    marginLeft: 8,
+    borderRadius: borderRadius.sm,
+    marginLeft: spacing.xs,
   },
   aiTagText: {
-    fontSize: 10,
-    color: '#1976D2',
-    fontWeight: '600',
+    fontSize: 9,
+    color: colors.info,
+    fontWeight: typography.fontWeight.semibold,
   },
   addedTag: {
-    backgroundColor: '#E8F5E9',
-    paddingHorizontal: 8,
+    backgroundColor: colors.primaryPale,
+    paddingHorizontal: spacing.xs,
     paddingVertical: 2,
-    borderRadius: 10,
-    marginLeft: 8,
+    borderRadius: borderRadius.sm,
+    marginLeft: spacing.xs,
   },
   addedTagText: {
-    fontSize: 10,
-    color: '#2E7D32',
-    fontWeight: '600',
+    fontSize: 9,
+    color: colors.primaryDark,
+    fontWeight: typography.fontWeight.semibold,
   },
   regenerateBtn: {
-    backgroundColor: '#FFF3E0',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    backgroundColor: colors.surfaceLight,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: borderRadius.full,
   },
   regenerateBtnText: {
-    fontSize: 12,
-    color: '#E65100',
-    fontWeight: '600',
+    fontSize: typography.fontSize.xs,
+    color: colors.textSecondary,
+    fontWeight: typography.fontWeight.medium,
   },
-  addedMealCard: {
-    borderLeftWidth: 4,
-    borderLeftColor: '#2E7D32',
+  mealContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  mealEmoji: {
+    fontSize: 40,
+    marginRight: spacing.sm,
+  },
+  mealInfo: {
+    flex: 1,
+  },
+  mealName: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textPrimary,
+    marginBottom: 2,
+  },
+  mealMacros: {
+    fontSize: typography.fontSize.xs,
+    color: colors.textMuted,
+  },
+  mealActions: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+  },
+  viewRecipeBtn: {
+    flex: 1,
+    paddingVertical: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+  },
+  viewRecipeBtnText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
+    fontWeight: typography.fontWeight.medium,
+  },
+  addMealBtn: {
+    flex: 1,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+  },
+  addMealBtnText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.textOnPrimary,
+    fontWeight: typography.fontWeight.semibold,
   },
   viewRecipeBtnFull: {
-    backgroundColor: '#2E7D32',
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginTop: 8,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+  },
+  
+  // Tip Card
+  tipCard: {
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.xl,
+    backgroundColor: colors.primaryPale,
+    borderRadius: borderRadius.xl,
+    padding: spacing.md,
+  },
+  tipHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
+  tipIcon: {
+    fontSize: 18,
+    marginRight: spacing.xs,
+  },
+  tipTitle: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primaryDark,
+  },
+  tipText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
+    lineHeight: 20,
+  },
+  
+  bottomSpacer: {
+    height: spacing.xl,
+  },
+  
+  // ========== IMPROVED SUGGESTION CARD STYLES ==========
+  suggestionCard: {
+    width: 280,
+    backgroundColor: '#FFFFFF',
+    borderRadius: borderRadius.xl,
+    marginRight: spacing.md,
+    overflow: 'hidden',
+    ...shadows.card,
+  },
+  suggestionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: spacing.md,
+    backgroundColor: colors.primaryPale,
+  },
+  suggestionTypeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  suggestionTypeIcon: {
+    fontSize: 18,
+  },
+  suggestionTypeText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary,
+  },
+  suggestionAIBadge: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: borderRadius.full,
+  },
+  suggestionAIText: {
+    fontSize: typography.fontSize.xs,
+    color: '#FFFFFF',
+    fontWeight: typography.fontWeight.medium,
+  },
+  suggestionContent: {
+    padding: spacing.md,
+    alignItems: 'center',
+  },
+  suggestionEmojiCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.surfaceLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.sm,
+  },
+  suggestionEmoji: {
+    fontSize: 32,
+  },
+  suggestionName: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textPrimary,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
+    minHeight: 44,
+  },
+  suggestionNutrition: {
+    marginBottom: spacing.sm,
+  },
+  nutritionPillCalories: {
+    backgroundColor: colors.primary + '20',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+  },
+  nutritionPillText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary,
+  },
+  suggestionMacroRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    width: '100%',
+  },
+  macroItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  macroValue: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.textPrimary,
+  },
+  macroLabel: {
+    fontSize: typography.fontSize.xs,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  macroDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: colors.border,
+  },
+  suggestionActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  suggestionViewBtn: {
+    flex: 1,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.surfaceLight,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+  },
+  suggestionViewBtnText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
+    fontWeight: typography.fontWeight.medium,
+  },
+  suggestionAddBtn: {
+    flex: 1,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+  },
+  suggestionAddBtnText: {
+    fontSize: typography.fontSize.sm,
+    color: '#FFFFFF',
+    fontWeight: typography.fontWeight.semibold,
+  },
+  suggestionRefresh: {
+    padding: spacing.md,
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    marginTop: spacing.md,
+  },
+  suggestionRefreshText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary,
+    fontWeight: typography.fontWeight.medium,
   },
 });
 

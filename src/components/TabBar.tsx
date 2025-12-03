@@ -1,42 +1,63 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { colors, shadows } from '../constants/theme';
 
 interface TabBarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
 }
 
+// Professional minimal Unicode icons for each tab
+const TabIcon = ({ name, isActive }: { name: string; isActive: boolean }) => {
+  const iconColor = isActive ? colors.primary : colors.textMuted;
+  const iconSize = isActive ? 24 : 22;
+  
+  const icons: Record<string, string> = {
+    home: '⌂',
+    meals: '◐',
+    recipes: '❖',
+    exercise: '◈',
+    profile: '◉',
+  };
+  
+  return (
+    <View style={[styles.iconWrapper, isActive && styles.iconWrapperActive]}>
+      <Text style={[styles.icon, { color: iconColor, fontSize: iconSize }]}>
+        {icons[name] || '●'}
+      </Text>
+    </View>
+  );
+};
+
 const tabs = [
-  { id: 'home', label: 'Home', icon: '🏠' },
-  { id: 'meals', label: 'Meals', icon: '🍽️' },
-  { id: 'recipes', label: 'Recipes', icon: '📖' },
-  { id: 'profile', label: 'Profile', icon: '👤' },
+  { id: 'home', label: 'Home' },
+  { id: 'meals', label: 'Meals' },
+  { id: 'recipes', label: 'Recipes' },
+  { id: 'exercise', label: 'Exercise' },
+  { id: 'profile', label: 'Profile' },
 ];
 
 const TabBar: React.FC<TabBarProps> = ({ activeTab, onTabChange }) => {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+    <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, 8) }]}>
       <View style={styles.tabBar}>
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           return (
             <TouchableOpacity
               key={tab.id}
-              style={[styles.tabBtn, isActive && styles.tabBtnActive]}
+              style={styles.tabBtn}
               onPress={() => onTabChange(tab.id)}
-              activeOpacity={0.8}
+              activeOpacity={0.7}
             >
-              <View style={styles.iconContainer}>
-                <Text style={[styles.tabIcon, isActive && styles.tabIconActive]}>
-                  {tab.icon}
-                </Text>
-              </View>
+              <TabIcon name={tab.id} isActive={isActive} />
               <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>
                 {tab.label}
               </Text>
+              {isActive && <View style={styles.activeIndicator} />}
             </TouchableOpacity>
           );
         })}
@@ -47,52 +68,54 @@ const TabBar: React.FC<TabBarProps> = ({ activeTab, onTabChange }) => {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.background,
     borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 8,
+    borderTopColor: colors.border,
+    ...shadows.topBar,
   },
   tabBar: {
-    flexDirection: 'row' as const,
-    paddingTop: 12,
-    paddingHorizontal: 20,
-    paddingBottom: 8,
+    flexDirection: 'row',
+    paddingTop: 8,
+    paddingHorizontal: 16,
   },
   tabBtn: {
     flex: 1,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    paddingVertical: 8,
-    borderRadius: 12,
-    marginHorizontal: 4,
-    minHeight: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 6,
+    position: 'relative',
   },
-  tabBtnActive: {
-    backgroundColor: '#84C225',
+  iconWrapper: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 16,
   },
-  iconContainer: {
-    marginBottom: 4,
+  iconWrapperActive: {
+    backgroundColor: colors.primaryPale,
   },
-  tabIcon: {
-    fontSize: 24,
-    opacity: 0.5,
-  },
-  tabIconActive: {
-    opacity: 1,
+  icon: {
+    fontWeight: '300',
   },
   tabLabel: {
-    fontSize: 12,
-    fontWeight: '500' as const,
-    color: '#999999',
-    letterSpacing: 0.3,
+    fontSize: 10,
+    fontWeight: '500',
+    color: colors.textMuted,
+    marginTop: 2,
+    letterSpacing: 0.2,
   },
   tabLabelActive: {
-    color: '#FFFFFF',
-    fontWeight: '600' as const,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  activeIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.primary,
   },
 });
 

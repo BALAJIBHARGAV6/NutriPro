@@ -1,52 +1,69 @@
-// NutriPlan Design System - BigBasket-inspired Green & White Theme
+// NutriPro Professional Design System - Modern Green & White Theme
 
 export const colors = {
-  // Primary Colors (BigBasket-inspired green)
+  // Primary Colors (BigBasket Green)
   primary: '#84C225',
-  primaryDark: '#6FA31E',
-  primaryLight: '#A8D96E',
+  primaryDark: '#6BA31E',
+  primaryLight: '#9ED43A',
   primaryPale: '#E8F5D9',
+  primaryMint: '#B8E063',
+  primarySoft: '#D4EDA0',
   
   // Accent Colors
-  accent: '#FF6B35',
-  accentYellow: '#FFC107',
+  accent: '#D9F99D',
+  accentLime: '#84CC16',
   
   // Status Colors
-  success: '#4CAF50',
-  error: '#F44336',
-  warning: '#FFC107',
-  info: '#2196F3',
+  success: '#059669',
+  error: '#EF4444',
+  warning: '#F59E0B',
+  info: '#3B82F6',
   
   // Background & Surface
   background: '#FFFFFF',
-  surface: '#FAFAFA',
-  surfaceLight: '#F5F5F5',
+  surface: '#F9FAFB',
+  surfaceLight: '#F3F4F6',
+  surfaceCard: '#FFFFFF',
   
   // Text Colors
+  textPrimary: '#1F2937',
+  textSecondary: '#6B7280',
+  textMuted: '#9CA3AF',
+  textOnPrimary: '#FFFFFF',
   textDark: '#1F2937',
   textMedium: '#4B5563',
   textLight: '#9CA3AF',
-  textOnPrimary: '#FFFFFF',
   
   // Nutrition Colors
-  calories: '#FF6B35',
-  protein: '#84C225',
-  carbs: '#2196F3',
-  fats: '#FFC107',
-  fiber: '#26A69A',
+  calories: '#F97316',
+  protein: '#10B981',
+  carbs: '#3B82F6',
+  fats: '#F59E0B',
+  fiber: '#14B8A6',
+  water: '#06B6D4',
   
-  // Misc
-  border: '#E0E0E0',
-  borderLight: '#F5F5F5',
-  divider: '#E0E0E0',
-  disabled: '#9CA3AF',
+  // Borders
+  border: '#E5E7EB',
+  borderLight: '#F3F4F6',
+  borderFocus: '#10B981',
+  divider: '#E5E7EB',
+  
+  // States
+  disabled: '#D1D5DB',
   overlay: 'rgba(0, 0, 0, 0.5)',
+  overlayLight: 'rgba(255, 255, 255, 0.85)',
+  
+  // Glass Effect
+  glass: 'rgba(255, 255, 255, 0.75)',
+  glassBorder: 'rgba(255, 255, 255, 0.2)',
+  glassLight: 'rgba(255, 255, 255, 0.9)',
+  glassDark: 'rgba(255, 255, 255, 0.6)',
   
   // Shadows
   shadowSoft: 'rgba(0, 0, 0, 0.04)',
   shadowMedium: 'rgba(0, 0, 0, 0.08)',
   shadowStrong: 'rgba(0, 0, 0, 0.12)',
-  greenGlow: 'rgba(132, 194, 37, 0.15)',
+  greenGlow: 'rgba(16, 185, 129, 0.15)',
 };
 
 export const spacing = {
@@ -106,6 +123,13 @@ export const typography = {
 };
 
 export const shadows = {
+  none: {
+    shadowColor: 'transparent',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
+  },
   soft: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -117,22 +141,43 @@ export const shadows = {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
-    shadowRadius: 16,
+    shadowRadius: 12,
     elevation: 4,
   },
   strong: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.12,
-    shadowRadius: 32,
+    shadowRadius: 24,
     elevation: 8,
   },
-  greenGlow: {
-    shadowColor: '#84C225',
+  card: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  cardHover: {
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
     elevation: 4,
+  },
+  greenGlow: {
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 4,
+  },
+  topBar: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
 };
 

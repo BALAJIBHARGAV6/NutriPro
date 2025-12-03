@@ -6,6 +6,7 @@ export interface User {
   fullName?: string;
   name?: string;
   avatarUrl?: string;
+  avatar?: string; // Emoji avatar
   age: number;
   gender: 'male' | 'female' | 'other';
   weight: number;

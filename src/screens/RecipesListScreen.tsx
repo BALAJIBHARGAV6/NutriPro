@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,9 @@ import {
   Modal,
   ActivityIndicator,
   Alert,
+  Dimensions,
+  Animated,
+  Easing,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { User } from '../types';
@@ -16,6 +19,10 @@ import { Meal, professionalAIService, UserProfile } from '../services/profession
 import { storageService } from '../services/storageService';
 import { databaseService } from '../services/databaseService';
 import { isSupabaseConfigured } from '../config/supabase';
+import { colors, shadows, spacing, borderRadius, typography } from '../constants/theme';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CARD_WIDTH = (SCREEN_WIDTH - spacing.lg * 2 - spacing.sm) / 2;
 
 interface RecipesListScreenProps {
   user: User;
@@ -154,14 +161,30 @@ const RecipesListScreen: React.FC<RecipesListScreenProps> = ({
     },
   ];
 
-  // Load recipes on mount - runs immediately
+  // Load recipes on mount with 4 second minimum loading
   useEffect(() => {
-    const baseRecipes = getBaseRecipes();
-    setRecipes(baseRecipes);
-    console.log('✅ Loaded', baseRecipes.length, 'recipes');
+    const loadRecipes = async () => {
+      setLoading(true);
+      const startTime = Date.now();
+      
+      try {
+        const baseRecipes = getBaseRecipes();
+        setRecipes(baseRecipes);
+        console.log('✅ Loaded', baseRecipes.length, 'recipes');
+        
+        // Load user's added meals
+        await loadMyMeals();
+      } catch (error) {
+        console.error('Error loading recipes:', error);
+      } finally {
+        // Ensure minimum 4 second loading for professional feel
+        const elapsedTime = Date.now() - startTime;
+        const remainingTime = Math.max(0, 4000 - elapsedTime);
+        setTimeout(() => setLoading(false), remainingTime);
+      }
+    };
     
-    // Load user's added meals
-    loadMyMeals();
+    loadRecipes();
   }, []);
 
   // Load user's added meals to show related recipes
@@ -372,22 +395,94 @@ const RecipesListScreen: React.FC<RecipesListScreenProps> = ({
     );
   };
 
-  // Loading state
+  // Loading animation
+  const spinValue = useRef(new Animated.Value(0)).current;
+  const pulseValue = useRef(new Animated.Value(1)).current;
+  
+  useEffect(() => {
+    if (loading) {
+      Animated.loop(
+        Animated.timing(spinValue, {
+          toValue: 1,
+          duration: 1500,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        })
+      ).start();
+      
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseValue, {
+            toValue: 1.2,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseValue, {
+            toValue: 1,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    }
+  }, [loading]);
+
+  const spin = spinValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  // Loading state - Professional animation
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>📖 RECIPES</Text>
-        </View>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2E7D32" />
-          <Text style={styles.loadingText}>
-            {generating ? 'Generating personalized recipes with AI...' : 'Loading recipes...'}
+        <View style={styles.loadingScreen}>
+          {/* Professional Loader Ring */}
+          <View style={styles.loaderContainer}>
+            <Animated.View style={[styles.loaderRing, { transform: [{ rotate: spin }] }]} />
+            <View style={styles.loaderInner}>
+              <Animated.View style={{ transform: [{ scale: pulseValue }] }}>
+                <Text style={styles.loaderIcon}>📖</Text>
+              </Animated.View>
+            </View>
+          </View>
+          
+          <Text style={styles.loadingTitle}>Loading Recipes</Text>
+          <Text style={styles.loadingSubtitleAnim}>
+            {generating ? 'Generating personalized recipes...' : 'Finding delicious options...'}
           </Text>
+          
+          {/* Animated Dots */}
+          <View style={styles.loadingDotsRow}>
+            <Animated.View style={[styles.loadingDot, { opacity: pulseValue }]} />
+            <View style={[styles.loadingDot, { opacity: 0.6 }]} />
+            <View style={[styles.loadingDot, { opacity: 0.3 }]} />
+          </View>
+          
+          {/* Food Icons Row */}
+          <View style={styles.loadingFoodRow}>
+            <View style={styles.loadingFoodItem}>
+              <Text style={styles.loadingFoodEmoji}>🥗</Text>
+              <Text style={styles.loadingFoodLabel}>Salads</Text>
+            </View>
+            <View style={styles.loadingFoodItem}>
+              <Text style={styles.loadingFoodEmoji}>🍲</Text>
+              <Text style={styles.loadingFoodLabel}>Soups</Text>
+            </View>
+            <View style={styles.loadingFoodItem}>
+              <Text style={styles.loadingFoodEmoji}>🥘</Text>
+              <Text style={styles.loadingFoodLabel}>Mains</Text>
+            </View>
+            <View style={styles.loadingFoodItem}>
+              <Text style={styles.loadingFoodEmoji}>🍰</Text>
+              <Text style={styles.loadingFoodLabel}>Healthy</Text>
+            </View>
+          </View>
+          
           {user.diseases && user.diseases.length > 0 && (
-            <Text style={styles.loadingSubtext}>
-              Customizing for: {user.diseases.join(', ')}
-            </Text>
+            <View style={styles.loadingBadge}>
+              <Text style={styles.loadingBadgeText}>🎯 Customized for {user.diseases[0]}</Text>
+            </View>
           )}
         </View>
       </SafeAreaView>
@@ -395,26 +490,28 @@ const RecipesListScreen: React.FC<RecipesListScreenProps> = ({
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerRow}>
-          <Text style={styles.headerTitle}>📖 RECIPES</Text>
+          <View>
+            <Text style={styles.headerTitle}>Recipes</Text>
+            {user.diseases && user.diseases.length > 0 && (
+              <Text style={styles.headerSubtitle}>
+                Personalized for {user.diseases[0]}
+              </Text>
+            )}
+          </View>
           <TouchableOpacity 
             style={styles.generateBtn}
             onPress={generateAIRecipes}
             disabled={generating}
           >
             <Text style={styles.generateBtnText}>
-              {generating ? '⏳' : '🤖 Generate New'}
+              {generating ? '...' : '+ Generate'}
             </Text>
           </TouchableOpacity>
         </View>
-        {user.diseases && user.diseases.length > 0 && (
-          <Text style={styles.headerSubtitle}>
-            Personalized for: {user.diseases.slice(0, 2).join(', ')}
-          </Text>
-        )}
       </View>
 
       {/* Search */}
@@ -422,28 +519,36 @@ const RecipesListScreen: React.FC<RecipesListScreenProps> = ({
         <TextInput
           style={styles.searchInput}
           placeholder="Search recipes..."
+          placeholderTextColor={colors.textMuted}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
       </View>
 
-      {/* Filters */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterContainer}>
-        {filters.map(filter => (
-          <TouchableOpacity
-            key={filter}
-            style={[styles.filterButton, selectedFilter === filter && styles.filterButtonActive]}
-            onPress={() => setSelectedFilter(filter)}
-          >
-            <Text style={[styles.filterText, selectedFilter === filter && styles.filterTextActive]}>
-              {filter.charAt(0).toUpperCase() + filter.slice(1)}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      {/* Filters - Professional Pill Style */}
+      <View style={styles.filterWrapper}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterContainer}>
+          {filters.map(filter => (
+            <TouchableOpacity
+              key={filter}
+              style={[styles.filterButton, selectedFilter === filter && styles.filterButtonActive]}
+              onPress={() => setSelectedFilter(filter)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.filterText, selectedFilter === filter && styles.filterTextActive]}>
+                {filter.charAt(0).toUpperCase() + filter.slice(1)}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
 
       {/* Recipe List - All in one ScrollView */}
-      <ScrollView style={styles.recipeList}>
+      <ScrollView 
+        style={styles.recipeList}
+        contentContainerStyle={styles.recipeListContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* My Meals Section - Same style as other recipes */}
         {myMeals.length > 0 && (
           <View>
@@ -507,266 +612,373 @@ const RecipesListScreen: React.FC<RecipesListScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
-  header: {
-    padding: 16,
-    backgroundColor: '#84C225',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: 'white',
-  },
-  searchContainer: {
-    padding: 16,
-    backgroundColor: 'white',
-  },
-  searchInput: {
-    backgroundColor: '#F5F5F5',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
-    fontSize: 16,
-  },
-  filterContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: 'white',
-  },
-  filterButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginRight: 8,
-    borderRadius: 20,
-    backgroundColor: '#F5F5F5',
-  },
-  filterButtonActive: {
-    backgroundColor: '#84C225',
-  },
-  filterText: {
-    color: '#666',
-    fontWeight: '500',
-  },
-  filterTextActive: {
-    color: 'white',
-  },
-  recipeList: {
-    flex: 1,
-    padding: 16,
-  },
-  mealTypeHeader: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#666',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  recipeCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'white',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  recipeEmoji: {
-    fontSize: 40,
-    marginRight: 12,
-  },
-  recipeInfo: {
-    flex: 1,
-  },
-  recipeName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
-  },
-  recipeStats: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 2,
-  },
-  recipeTags: {
-    fontSize: 12,
-    color: '#84C225',
-  },
-  viewArrow: {
-    fontSize: 20,
-    color: '#84C225',
-  },
-  // Modal Styles
-  modalContainer: {
-    flex: 1,
-    backgroundColor: 'white',
-  },
-  modalScroll: {
-    flex: 1,
-  },
-  modalHeader: {
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  backButton: {
-    fontSize: 16,
-    color: '#84C225',
-  },
-  recipeImageContainer: {
-    alignItems: 'center',
-    padding: 32,
-    backgroundColor: '#F5F5F5',
-  },
-  recipeImageEmoji: {
-    fontSize: 80,
-  },
-  modalTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    paddingHorizontal: 16,
-    marginTop: 16,
-  },
-  modalDescription: {
-    fontSize: 16,
-    color: '#666',
-    paddingHorizontal: 16,
-    marginTop: 8,
-  },
-  quickStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    padding: 16,
-    marginTop: 16,
-    backgroundColor: '#F5F5F5',
-  },
-  statBox: {
-    alignItems: 'center',
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#666',
-  },
-  statValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  section: {
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 12,
-  },
-  nutritionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  nutritionItem: {
-    fontSize: 14,
-    color: '#666',
-  },
-  benefitItem: {
-    fontSize: 14,
-    color: '#2E7D32',
-    marginBottom: 4,
-  },
-  ingredientItem: {
-    fontSize: 14,
-    color: '#333',
-    marginBottom: 4,
-  },
-  instructionItem: {
-    fontSize: 14,
-    color: '#333',
-    marginBottom: 8,
-    lineHeight: 20,
-  },
-  actionButtons: {
-    padding: 16,
-    paddingBottom: 32,
-  },
-  addToMealsBtn: {
-    backgroundColor: '#2E7D32',
-    paddingVertical: 16,
-    borderRadius: 8,
-  },
-  addToMealsBtnText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  // New styles for AI integration
-  loadingContainer: {
+  
+  // Loading Screen
+  loadingScreen: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 32,
+    backgroundColor: colors.surface,
+    padding: spacing.xl,
   },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#333',
+  loadingIcon: {
+    fontSize: 64,
+  },
+  loadingTitle: {
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.textPrimary,
+    marginTop: spacing.lg,
+  },
+  loadingSubtitleAnim: {
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
     textAlign: 'center',
   },
-  loadingSubtext: {
-    marginTop: 8,
-    fontSize: 14,
-    color: '#2E7D32',
-    textAlign: 'center',
+  loadingBadge: {
+    backgroundColor: colors.primaryPale,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+    marginTop: spacing.lg,
+  },
+  loadingBadgeText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary,
+    fontWeight: typography.fontWeight.medium,
+  },
+  loaderContainer: {
+    width: 120,
+    height: 120,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.xl,
+  },
+  loaderRing: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 4,
+    borderColor: colors.surfaceLight,
+    borderTopColor: colors.primary,
+    borderRightColor: colors.primary,
+  },
+  loaderInner: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...shadows.card,
+  },
+  loaderIcon: {
+    fontSize: 40,
+  },
+  loadingDotsRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+    marginBottom: spacing.xl,
+  },
+  loadingDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.primary,
+  },
+  loadingFoodRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: spacing.lg,
+    marginTop: spacing.md,
+  },
+  loadingFoodItem: {
+    alignItems: 'center',
+  },
+  loadingFoodEmoji: {
+    fontSize: 28,
+    marginBottom: spacing.xs,
+  },
+  loadingFoodLabel: {
+    fontSize: typography.fontSize.xs,
+    color: colors.textMuted,
+  },
+  
+  header: {
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.lg,
   },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  headerTitle: {
+    fontSize: typography.fontSize['2xl'],
+    fontWeight: typography.fontWeight.bold,
+    color: colors.textPrimary,
+  },
   headerSubtitle: {
-    fontSize: 12,
-    color: '#C8E6C9',
-    marginTop: 4,
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
+    marginTop: 2,
   },
   generateBtn: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.lg,
   },
   generateBtnText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: '600',
+    color: colors.textOnPrimary,
+    fontWeight: typography.fontWeight.semibold,
+    fontSize: typography.fontSize.sm,
+  },
+  searchContainer: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.background,
+  },
+  searchInput: {
+    backgroundColor: colors.surfaceLight,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.lg,
+    fontSize: typography.fontSize.base,
+    color: colors.textPrimary,
+  },
+  filterWrapper: {
+    backgroundColor: colors.background,
+    paddingVertical: spacing.sm,
+  },
+  filterContainer: {
+    paddingHorizontal: spacing.lg,
+    gap: spacing.sm,
+  },
+  filterButton: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.surfaceLight,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  filterButtonActive: {
+    backgroundColor: colors.primary,
+  },
+  filterText: {
+    color: colors.textSecondary,
+    fontWeight: typography.fontWeight.medium,
+    fontSize: typography.fontSize.sm,
+  },
+  filterTextActive: {
+    color: colors.textOnPrimary,
+  },
+  recipeList: {
+    flex: 1,
+  },
+  recipeListContent: {
+    padding: spacing.lg,
+    paddingBottom: 100,
+  },
+  mealTypeHeader: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textSecondary,
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  recipeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    padding: spacing.md,
+    borderRadius: borderRadius.xl,
+    marginBottom: spacing.sm,
+    ...shadows.card,
+  },
+  recipeEmoji: {
+    fontSize: 40,
+    marginRight: spacing.sm,
+  },
+  recipeInfo: {
+    flex: 1,
+  },
+  recipeName: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textPrimary,
+    marginBottom: 4,
+  },
+  recipeStats: {
+    fontSize: typography.fontSize.xs,
+    color: colors.textSecondary,
+    marginBottom: 2,
+  },
+  recipeTags: {
+    fontSize: typography.fontSize.xs,
+    color: colors.primary,
+  },
+  viewArrow: {
+    fontSize: 20,
+    color: colors.primary,
+  },
+  // Modal Styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  modalScroll: {
+    flex: 1,
+  },
+  modalHeader: {
+    padding: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
+  },
+  backButton: {
+    fontSize: typography.fontSize.base,
+    color: colors.primary,
+    fontWeight: typography.fontWeight.medium,
+  },
+  recipeImageContainer: {
+    alignItems: 'center',
+    padding: spacing.xxl,
+    backgroundColor: colors.primaryPale,
+  },
+  recipeImageEmoji: {
+    fontSize: 80,
+  },
+  modalTitle: {
+    fontSize: typography.fontSize['2xl'],
+    fontWeight: typography.fontWeight.bold,
+    color: colors.textPrimary,
+    paddingHorizontal: spacing.lg,
+    marginTop: spacing.md,
+  },
+  modalDescription: {
+    fontSize: typography.fontSize.base,
+    color: colors.textSecondary,
+    paddingHorizontal: spacing.lg,
+    marginTop: spacing.xs,
+    lineHeight: 22,
+  },
+  quickStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    padding: spacing.lg,
+    marginTop: spacing.md,
+    backgroundColor: colors.surfaceLight,
+    marginHorizontal: spacing.lg,
+    borderRadius: borderRadius.xl,
+  },
+  statBox: {
+    alignItems: 'center',
+  },
+  statLabel: {
+    fontSize: typography.fontSize.xs,
+    color: colors.textSecondary,
+  },
+  statValue: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.textPrimary,
+  },
+  section: {
+    padding: spacing.lg,
+  },
+  sectionTitle: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+  },
+  nutritionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  nutritionItem: {
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
+  },
+  benefitItem: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary,
+    marginBottom: 4,
+  },
+  ingredientItem: {
+    fontSize: typography.fontSize.sm,
+    color: colors.textPrimary,
+    marginBottom: 4,
+  },
+  instructionItem: {
+    fontSize: typography.fontSize.sm,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
+    lineHeight: 20,
+  },
+  actionButtons: {
+    padding: spacing.lg,
+    paddingBottom: spacing.xxl,
+  },
+  addToMealsBtn: {
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.lg,
+  },
+  addToMealsBtnText: {
+    color: colors.textOnPrimary,
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    textAlign: 'center',
+  },
+  // Loading styles
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xxl,
+  },
+  loadingText: {
+    marginTop: spacing.md,
+    fontSize: typography.fontSize.base,
+    color: colors.textPrimary,
+    textAlign: 'center',
+  },
+  loadingSubtext: {
+    marginTop: spacing.xs,
+    fontSize: typography.fontSize.sm,
+    color: colors.primary,
+    textAlign: 'center',
   },
   emptyState: {
-    padding: 32,
+    padding: spacing.xxl,
     alignItems: 'center',
   },
   emptyText: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 16,
+    fontSize: typography.fontSize.base,
+    color: colors.textSecondary,
+    marginBottom: spacing.md,
   },
   generateNewBtn: {
-    backgroundColor: '#2E7D32',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.lg,
   },
   generateNewBtnText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '600',
+    color: colors.textOnPrimary,
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
   },
   // My Meals section styles
   myMealsSection: {

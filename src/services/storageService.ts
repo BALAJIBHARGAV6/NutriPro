@@ -349,6 +349,58 @@ class StorageService {
       console.log('Failed to sync from database:', error);
     }
   }
+  
+  // Water Intake Management (glasses count - 250ml per glass)
+  async saveWaterIntake(userId: string, date: string, glasses: number): Promise<void> {
+    const key = `nutripro_water_${userId}_${date}`;
+    await AsyncStorage.setItem(key, JSON.stringify(glasses));
+    
+    // Sync to database if configured (convert glasses to ml)
+    if (isSupabaseConfigured) {
+      try {
+        // Add the difference as new intake
+        await databaseService.addWaterIntake(250); // 250ml per glass
+      } catch (error) {
+        console.log('Failed to sync water intake to database:', error);
+      }
+    }
+  }
+  
+  async getWaterIntake(userId: string, date: string): Promise<number> {
+    const key = `nutripro_water_${userId}_${date}`;
+    const stored = await AsyncStorage.getItem(key);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+    
+    // Try database if configured
+    if (isSupabaseConfigured) {
+      try {
+        const dbIntakeMl = await databaseService.getWaterIntake(date);
+        if (dbIntakeMl > 0) {
+          const glasses = Math.floor(dbIntakeMl / 250); // Convert ml to glasses
+          await AsyncStorage.setItem(key, JSON.stringify(glasses));
+          return glasses;
+        }
+      } catch (error) {
+        console.log('Failed to get water intake from database:', error);
+      }
+    }
+    
+    return 0;
+  }
+  
+  // Day Completion
+  async markDayComplete(userId: string, date: string, completed: boolean): Promise<void> {
+    const key = `nutripro_daycomplete_${userId}_${date}`;
+    await AsyncStorage.setItem(key, JSON.stringify(completed));
+  }
+  
+  async isDayComplete(userId: string, date: string): Promise<boolean> {
+    const key = `nutripro_daycomplete_${userId}_${date}`;
+    const stored = await AsyncStorage.getItem(key);
+    return stored ? JSON.parse(stored) : false;
+  }
 }
 
 export const storageService = new StorageService();

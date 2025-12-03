@@ -14,6 +14,7 @@ import { User } from '../types';
 import { storageService } from '../services/storageService';
 import { databaseService } from '../services/databaseService';
 import { isSupabaseConfigured } from '../config/supabase';
+import { colors, shadows, spacing, borderRadius, typography } from '../constants/theme';
 
 interface ProfileScreenProps {
   user: User;
@@ -32,6 +33,15 @@ const ProfileScreenNew: React.FC<ProfileScreenProps> = ({
   const [editValue, setEditValue] = useState('');
   const [showAddDiseaseModal, setShowAddDiseaseModal] = useState(false);
   const [newDisease, setNewDisease] = useState('');
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [selectedAvatar, setSelectedAvatar] = useState(user.avatar || '👤');
+
+  // Animated avatar options
+  const avatarOptions = [
+    '👤', '🧑', '👨', '👩', '🧔', '👱', '👸', '🤴', '🦸', '🦹',
+    '🧙', '🧝', '🧛', '🧟', '🥷', '🦊', '🐱', '🐶', '🐼', '🦁',
+    '🐯', '🐨', '🐵', '🦋', '🌸', '⭐', '🌟', '💫', '🔥', '💎',
+  ];
 
   const commonDiseases = [
     'Diabetes Type 1', 'Diabetes Type 2', 'Hypertension', 'High Cholesterol',
@@ -154,6 +164,24 @@ const ProfileScreenNew: React.FC<ProfileScreenProps> = ({
     );
   };
 
+  const handleAvatarSelect = async (avatar: string) => {
+    setSelectedAvatar(avatar);
+    setShowAvatarModal(false);
+    
+    // Update in Supabase first
+    if (isSupabaseConfigured) {
+      try {
+        await databaseService.updateUserProfile({ avatar });
+        console.log('✅ Avatar updated in Supabase');
+      } catch (error) {
+        console.error('Error updating avatar:', error);
+      }
+    }
+    
+    await storageService.updateUser({ avatar });
+    onUpdateUser({ avatar });
+  };
+
   const handleLogout = () => {
     Alert.alert(
       'Logout',
@@ -246,8 +274,8 @@ const ProfileScreenNew: React.FC<ProfileScreenProps> = ({
             >
               <Text style={styles.cancelBtnText}>Cancel</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.addBtn} onPress={handleAddDisease}>
-              <Text style={styles.addBtnText}>Add</Text>
+            <TouchableOpacity style={styles.addBtnModal} onPress={handleAddDisease}>
+              <Text style={styles.addBtnModalText}>Add</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -256,184 +284,256 @@ const ProfileScreenNew: React.FC<ProfileScreenProps> = ({
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView}>
-        {/* Header */}
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <ScrollView 
+        style={styles.scrollView} 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Clean Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>👤 PROFILE</Text>
+          <Text style={styles.headerTitle}>Profile</Text>
+          <Text style={styles.headerSubtitle}>Manage your account</Text>
         </View>
 
-        {/* Profile Photo */}
-        <View style={styles.photoSection}>
-          <View style={styles.photoContainer}>
-            <Text style={styles.photoEmoji}>👤</Text>
+        {/* Profile Card */}
+        <View style={styles.profileCard}>
+          <TouchableOpacity style={styles.avatarWrapper} onPress={() => setShowAvatarModal(true)}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarEmoji}>{selectedAvatar}</Text>
+            </View>
+            <View style={styles.onlineIndicator} />
+            <View style={styles.avatarEditBadge}>
+              <Text style={styles.avatarEditIcon}>✏️</Text>
+            </View>
+          </TouchableOpacity>
+          <View style={styles.profileInfo}>
+            <Text style={styles.profileName}>{user.fullName || 'User'}</Text>
+            <Text style={styles.profileEmail}>{user.email}</Text>
           </View>
-          <TouchableOpacity style={styles.changePhotoBtn}>
-            <Text style={styles.changePhotoText}>Change Photo</Text>
+          <TouchableOpacity style={styles.editProfileBtn} onPress={() => handleEdit('fullName', user.fullName || '')}>
+            <Text style={styles.editProfileText}>Edit</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Personal Information */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📋 PERSONAL INFORMATION</Text>
-          
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Name</Text>
-            <View style={styles.infoValueContainer}>
-              <Text style={styles.infoValue}>{user.fullName || user.name || 'User'}</Text>
-              <TouchableOpacity onPress={() => handleEdit('fullName', user.fullName || user.name || 'User')}>
-                <Text style={styles.editBtn}>Edit</Text>
+        {/* Avatar Selection Modal */}
+        <Modal visible={showAvatarModal} transparent animationType="slide">
+          <View style={styles.modalOverlay}>
+            <View style={styles.avatarModal}>
+              <Text style={styles.avatarModalTitle}>Choose Your Avatar</Text>
+              <Text style={styles.avatarModalSubtitle}>Select an avatar that represents you</Text>
+              
+              <View style={styles.avatarGrid}>
+                {avatarOptions.map((avatar, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={[
+                      styles.avatarOption,
+                      selectedAvatar === avatar && styles.avatarOptionSelected
+                    ]}
+                    onPress={() => handleAvatarSelect(avatar)}
+                  >
+                    <Text style={styles.avatarOptionEmoji}>{avatar}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              
+              <TouchableOpacity 
+                style={styles.avatarModalClose}
+                onPress={() => setShowAvatarModal(false)}
+              >
+                <Text style={styles.avatarModalCloseText}>Cancel</Text>
               </TouchableOpacity>
             </View>
           </View>
+        </Modal>
 
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Age</Text>
-            <View style={styles.infoValueContainer}>
-              <Text style={styles.infoValue}>{user.age}</Text>
-              <TouchableOpacity onPress={() => handleEdit('age', user.age)}>
-                <Text style={styles.editBtn}>Edit</Text>
-              </TouchableOpacity>
-            </View>
+        {/* Stats Grid */}
+        <View style={styles.statsGrid}>
+          <View style={styles.statBox}>
+            <Text style={styles.statValue}>{user.streak || 0}</Text>
+            <Text style={styles.statLabel}>Day Streak</Text>
           </View>
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Gender</Text>
-            <Text style={styles.infoValue}>{user.gender}</Text>
+          <View style={[styles.statBox, styles.statBoxHighlight]}>
+            <Text style={[styles.statValue, { color: '#FFF' }]}>{user.totalMealsLogged || 0}</Text>
+            <Text style={[styles.statLabel, { color: 'rgba(255,255,255,0.8)' }]}>Meals Logged</Text>
           </View>
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Email</Text>
-            <Text style={styles.infoValue}>{user.email}</Text>
+          <View style={styles.statBox}>
+            <Text style={styles.statValue}>{bmi.value.toFixed(1)}</Text>
+            <Text style={styles.statLabel}>BMI ({bmi.category})</Text>
           </View>
         </View>
 
-        {/* Physical Metrics */}
+        {/* Section: Personal Details */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📏 PHYSICAL METRICS</Text>
+          <Text style={styles.sectionTitle}>PERSONAL DETAILS</Text>
           
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Weight</Text>
-            <View style={styles.infoValueContainer}>
-              <Text style={styles.infoValue}>{user.weight} kg</Text>
-              <TouchableOpacity onPress={() => handleEdit('weight', user.weight)}>
-                <Text style={styles.editBtn}>Edit</Text>
-              </TouchableOpacity>
+          <View style={styles.detailRow}>
+            <View style={styles.detailLeft}>
+              <View style={styles.detailIconBox}><Text style={styles.detailIcon}>👤</Text></View>
+              <View>
+                <Text style={styles.detailLabel}>Full Name</Text>
+                <Text style={styles.detailValue}>{user.fullName || user.name || 'Not set'}</Text>
+              </View>
+            </View>
+            <TouchableOpacity onPress={() => handleEdit('fullName', user.fullName || '')}>
+              <Text style={styles.detailAction}>Edit</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.detailRow}>
+            <View style={styles.detailLeft}>
+              <View style={styles.detailIconBox}><Text style={styles.detailIcon}>🎂</Text></View>
+              <View>
+                <Text style={styles.detailLabel}>Age</Text>
+                <Text style={styles.detailValue}>{user.age} years old</Text>
+              </View>
+            </View>
+            <TouchableOpacity onPress={() => handleEdit('age', user.age)}>
+              <Text style={styles.detailAction}>Edit</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.detailRow}>
+            <View style={styles.detailLeft}>
+              <View style={styles.detailIconBox}><Text style={styles.detailIcon}>{user.gender === 'male' ? '♂️' : '♀️'}</Text></View>
+              <View>
+                <Text style={styles.detailLabel}>Gender</Text>
+                <Text style={styles.detailValue}>{user.gender === 'male' ? 'Male' : 'Female'}</Text>
+              </View>
             </View>
           </View>
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Height</Text>
-            <Text style={styles.infoValue}>{user.height} cm</Text>
-          </View>
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>BMI</Text>
-            <Text style={[styles.infoValue, { color: '#2E7D32' }]}>
-              {bmi.value.toFixed(1)} ({bmi.category})
-            </Text>
-          </View>
-
-          <TouchableOpacity style={styles.viewHistoryBtn}>
-            <Text style={styles.viewHistoryText}>View Weight History Graph</Text>
-          </TouchableOpacity>
         </View>
 
-        {/* Health Conditions */}
+        {/* Section: Body Metrics */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>⚕️ HEALTH CONDITIONS</Text>
-          <Text style={styles.sectionSubtitle}>Current Diseases:</Text>
+          <Text style={styles.sectionTitle}>BODY METRICS</Text>
+          
+          <View style={styles.metricsGrid}>
+            <View style={styles.metricCard}>
+              <Text style={styles.metricEmoji}>⚖️</Text>
+              <Text style={styles.metricNumber}>{user.weight}</Text>
+              <Text style={styles.metricType}>kg</Text>
+              <TouchableOpacity style={styles.metricBtn} onPress={() => handleEdit('weight', user.weight)}>
+                <Text style={styles.metricBtnText}>Update</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.metricCard}>
+              <Text style={styles.metricEmoji}>📏</Text>
+              <Text style={styles.metricNumber}>{user.height}</Text>
+              <Text style={styles.metricType}>cm</Text>
+            </View>
+            <View style={[styles.metricCard, { backgroundColor: colors.primaryPale }]}>
+              <Text style={styles.metricEmoji}>📊</Text>
+              <Text style={[styles.metricNumber, { color: colors.primary }]}>{bmi.value.toFixed(1)}</Text>
+              <Text style={[styles.metricType, { color: colors.primary }]}>BMI</Text>
+              <Text style={styles.bmiCategory}>{bmi.category}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Section: Health Conditions */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>HEALTH CONDITIONS</Text>
+            <TouchableOpacity onPress={() => setShowAddDiseaseModal(true)}>
+              <Text style={styles.addBtn}>+ Add</Text>
+            </TouchableOpacity>
+          </View>
           
           {(user.diseases || []).length === 0 ? (
-            <Text style={styles.noConditions}>No health conditions added</Text>
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyEmoji}>✅</Text>
+              <Text style={styles.emptyText}>No health conditions</Text>
+            </View>
           ) : (
-            (user.diseases || []).map(disease => (
-              <View key={disease} style={styles.diseaseRow}>
-                <Text style={styles.diseaseText}>• {disease}</Text>
-                <TouchableOpacity onPress={() => handleRemoveDisease(disease)}>
-                  <Text style={styles.removeBtn}>Remove</Text>
-                </TouchableOpacity>
-              </View>
-            ))
+            <View style={styles.chipContainer}>
+              {(user.diseases || []).map(disease => (
+                <View key={disease} style={styles.chip}>
+                  <Text style={styles.chipText}>{disease}</Text>
+                  <TouchableOpacity onPress={() => handleRemoveDisease(disease)}>
+                    <Text style={styles.chipClose}>×</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
           )}
-
-          <TouchableOpacity
-            style={styles.addDiseaseBtn}
-            onPress={() => setShowAddDiseaseModal(true)}
-          >
-            <Text style={styles.addDiseaseBtnText}>+ Add New Disease</Text>
-          </TouchableOpacity>
         </View>
 
-        {/* Fitness Information */}
+        {/* Section: Fitness */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🏃 FITNESS INFORMATION</Text>
+          <Text style={styles.sectionTitle}>FITNESS PROFILE</Text>
           
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Exercise Level</Text>
-            <View style={styles.infoValueContainer}>
-              <Text style={styles.infoValue}>
-                {user.exerciseLevel?.replace('_', ' ')}
-              </Text>
-              <TouchableOpacity onPress={() => handleEdit('exerciseLevel', user.exerciseLevel)}>
-                <Text style={styles.editBtn}>Edit</Text>
-              </TouchableOpacity>
+          <View style={styles.detailRow}>
+            <View style={styles.detailLeft}>
+              <View style={styles.detailIconBox}><Text style={styles.detailIcon}>🏃</Text></View>
+              <View>
+                <Text style={styles.detailLabel}>Activity Level</Text>
+                <Text style={styles.detailValue}>{user.exerciseLevel?.replace('_', ' ') || 'Moderate'}</Text>
+              </View>
+            </View>
+            <View style={styles.levelBadge}>
+              <Text style={styles.levelBadgeText}>Active</Text>
             </View>
           </View>
 
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Health Goals</Text>
-            <Text style={styles.infoValue}>
-              {(user.healthGoals || []).join(', ') || 'Not set'}
-            </Text>
-          </View>
-        </View>
-
-        {/* Progress Stats */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📈 PROGRESS STATS</Text>
-          
-          <View style={styles.statsGrid}>
-            <View style={styles.statCard}>
-              <Text style={styles.statNumber}>{user.totalMealsLogged || 0}</Text>
-              <Text style={styles.statLabel}>Meals Logged</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statNumber}>🔥 {user.streak || 0}</Text>
-              <Text style={styles.statLabel}>Current Streak</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statNumber}>{user.longestStreak || 0}</Text>
-              <Text style={styles.statLabel}>Longest Streak</Text>
+          <View style={styles.goalsBox}>
+            <Text style={styles.goalsTitle}>Health Goals</Text>
+            <View style={styles.goalsChips}>
+              {(user.healthGoals || ['Stay Healthy']).map((goal, index) => (
+                <View key={index} style={styles.goalTag}>
+                  <Text style={styles.goalTagText}>{goal}</Text>
+                </View>
+              ))}
             </View>
           </View>
-
-          <TouchableOpacity style={styles.viewAnalyticsBtn}>
-            <Text style={styles.viewAnalyticsText}>View Detailed Analytics</Text>
-          </TouchableOpacity>
         </View>
 
-        {/* Settings */}
+        {/* Section: Settings */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>⚙️ SETTINGS</Text>
+          <Text style={styles.sectionTitle}>SETTINGS</Text>
           
           <TouchableOpacity style={styles.settingRow}>
-            <Text style={styles.settingText}>Change Password</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.settingRow}>
-            <Text style={styles.settingText}>Notification Preferences</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.settingRow}>
-            <Text style={styles.settingText}>Units: {user.unitsPreference || 'Metric'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.settingRow}>
-            <Text style={styles.settingText}>Export My Data</Text>
+            <View style={styles.settingLeft}>
+              <Text style={styles.settingIcon}>🔔</Text>
+              <Text style={styles.settingLabel}>Notifications</Text>
+            </View>
+            <Text style={styles.settingArrow}>›</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-            <Text style={styles.logoutBtnText}>Logout</Text>
+          <TouchableOpacity style={styles.settingRow}>
+            <View style={styles.settingLeft}>
+              <Text style={styles.settingIcon}>📏</Text>
+              <Text style={styles.settingLabel}>Units: Metric</Text>
+            </View>
+            <Text style={styles.settingArrow}>›</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.settingRow}>
+            <View style={styles.settingLeft}>
+              <Text style={styles.settingIcon}>🔒</Text>
+              <Text style={styles.settingLabel}>Privacy</Text>
+            </View>
+            <Text style={styles.settingArrow}>›</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.settingRow}>
+            <View style={styles.settingLeft}>
+              <Text style={styles.settingIcon}>❓</Text>
+              <Text style={styles.settingLabel}>Help & Support</Text>
+            </View>
+            <Text style={styles.settingArrow}>›</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Logout */}
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Text style={styles.logoutText}>Sign Out</Text>
+        </TouchableOpacity>
+        
+        <Text style={styles.versionText}>NutriPro v1.0.0</Text>
+        
+        <View style={{ height: 80 }} />
       </ScrollView>
 
       {renderEditModal()}
@@ -445,283 +545,559 @@ const ProfileScreenNew: React.FC<ProfileScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F5F7FA',
   },
   scrollView: {
     flex: 1,
   },
+  scrollContent: {
+    paddingBottom: 20,
+  },
+  
+  // Header
   header: {
-    padding: 16,
-    backgroundColor: '#84C225',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.md,
+    backgroundColor: '#F5F7FA',
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: 'white',
+    fontSize: 28,
+    fontWeight: '700',
+    color: colors.textPrimary,
   },
-  photoSection: {
-    alignItems: 'center',
-    padding: 24,
-    backgroundColor: 'white',
-  },
-  photoContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#E0E0E0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  photoEmoji: {
-    fontSize: 48,
-  },
-  changePhotoBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
-  changePhotoText: {
-    color: '#84C225',
-    fontWeight: '500',
-  },
-  section: {
-    backgroundColor: 'white',
-    marginTop: 12,
-    padding: 16,
-  },
-  sectionTitle: {
+  headerSubtitle: {
     fontSize: 14,
-    fontWeight: 'bold',
-    color: '#666',
-    marginBottom: 16,
-  },
-  sectionSubtitle: {
-    fontSize: 14,
-    color: '#333',
-    marginBottom: 8,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  infoLabel: {
-    fontSize: 14,
-    color: '#666',
-  },
-  infoValueContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  infoValue: {
-    fontSize: 14,
-    color: '#333',
-    fontWeight: '500',
-  },
-  editBtn: {
-    color: '#84C225',
-    marginLeft: 12,
-    fontWeight: '500',
-  },
-  viewHistoryBtn: {
-    marginTop: 12,
-    paddingVertical: 12,
-    backgroundColor: '#F5F5F5',
-    borderRadius: 8,
-  },
-  viewHistoryText: {
-    textAlign: 'center',
-    color: '#84C225',
-    fontWeight: '500',
-  },
-  noConditions: {
-    color: '#999',
-    fontStyle: 'italic',
-    marginBottom: 12,
-  },
-  diseaseRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  diseaseText: {
-    fontSize: 14,
-    color: '#333',
-  },
-  removeBtn: {
-    color: '#F44336',
-    fontWeight: '500',
-  },
-  addDiseaseBtn: {
-    marginTop: 12,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: '#84C225',
-    borderRadius: 8,
-    borderStyle: 'dashed',
-  },
-  addDiseaseBtnText: {
-    textAlign: 'center',
-    color: '#84C225',
-    fontWeight: '500',
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  statCard: {
-    flex: 1,
-    alignItems: 'center',
-    padding: 12,
-    backgroundColor: '#F5F5F5',
-    borderRadius: 8,
-    marginHorizontal: 4,
-  },
-  statNumber: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#84C225',
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#666',
+    color: colors.textMuted,
     marginTop: 4,
   },
-  viewAnalyticsBtn: {
-    paddingVertical: 12,
-    backgroundColor: '#F5F5F5',
+  
+  // Profile Card
+  profileCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: spacing.lg,
+    padding: spacing.lg,
+    borderRadius: 16,
+    ...shadows.card,
+  },
+  avatarWrapper: {
+    position: 'relative',
+  },
+  avatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarLetter: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  onlineIndicator: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#22C55E',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  profileInfo: {
+    flex: 1,
+    marginLeft: spacing.md,
+  },
+  profileName: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  profileEmail: {
+    fontSize: 13,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  editProfileBtn: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    backgroundColor: colors.primaryPale,
     borderRadius: 8,
   },
-  viewAnalyticsText: {
-    textAlign: 'center',
-    color: '#84C225',
-    fontWeight: '500',
+  editProfileText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.primary,
   },
-  settingRow: {
-    paddingVertical: 16,
+  
+  // Stats Grid
+  statsGrid: {
+    flexDirection: 'row',
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+    gap: spacing.sm,
+  },
+  statBox: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: spacing.md,
+    alignItems: 'center',
+    ...shadows.soft,
+  },
+  statBoxHighlight: {
+    backgroundColor: colors.primary,
+  },
+  statValue: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  statLabel: {
+    fontSize: 11,
+    color: colors.textMuted,
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  
+  // Section
+  section: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+    borderRadius: 16,
+    padding: spacing.lg,
+    ...shadows.soft,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textMuted,
+    letterSpacing: 0.5,
+    marginBottom: spacing.md,
+  },
+  addBtn: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  
+  // Detail Row
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
-  settingText: {
-    fontSize: 14,
-    color: '#333',
+  detailLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
-  logoutBtn: {
-    marginTop: 16,
-    paddingVertical: 16,
-    backgroundColor: '#F44336',
-    borderRadius: 8,
+  detailIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#F5F7FA',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
   },
-  logoutBtnText: {
-    textAlign: 'center',
-    color: 'white',
-    fontWeight: 'bold',
+  detailIcon: {
     fontSize: 16,
   },
-  // Modal Styles
+  detailLabel: {
+    fontSize: 12,
+    color: colors.textMuted,
+  },
+  detailValue: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: colors.textPrimary,
+  },
+  detailAction: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  
+  // Metrics Grid
+  metricsGrid: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  metricCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: spacing.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    ...shadows.soft,
+  },
+  metricEmoji: {
+    fontSize: 28,
+    marginBottom: spacing.xs,
+  },
+  metricNumber: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: colors.textPrimary,
+  },
+  metricType: {
+    fontSize: 13,
+    color: colors.textMuted,
+    fontWeight: '500',
+  },
+  metricBtn: {
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+  },
+  metricBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  bmiCategory: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.primary,
+    marginTop: 4,
+    backgroundColor: colors.primaryPale,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  
+  // Empty State
+  emptyState: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.lg,
+    backgroundColor: '#F5F7FA',
+    borderRadius: 10,
+  },
+  emptyEmoji: {
+    fontSize: 20,
+    marginRight: spacing.sm,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: colors.textMuted,
+  },
+  
+  // Chips
+  chipContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEE2E2',
+    paddingLeft: spacing.md,
+    paddingRight: spacing.sm,
+    paddingVertical: spacing.sm,
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    ...shadows.soft,
+  },
+  chipText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#DC2626',
+  },
+  chipClose: {
+    fontSize: 20,
+    color: '#DC2626',
+    marginLeft: spacing.sm,
+    fontWeight: '700',
+  },
+  
+  // Level Badge
+  levelBadge: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: 20,
+  },
+  levelBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  
+  // Goals
+  goalsBox: {
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+  },
+  goalsTitle: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginBottom: spacing.sm,
+  },
+  goalsChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  goalTag: {
+    backgroundColor: colors.primaryPale,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: 20,
+  },
+  goalTagText: {
+    fontSize: 13,
+    color: colors.primary,
+  },
+  
+  // Settings
+  settingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  settingLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  settingIcon: {
+    fontSize: 18,
+    marginRight: spacing.md,
+  },
+  settingLabel: {
+    fontSize: 15,
+    color: colors.textPrimary,
+  },
+  settingArrow: {
+    fontSize: 20,
+    color: colors.textMuted,
+  },
+  
+  // Logout
+  logoutButton: {
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.lg,
+    paddingVertical: 14,
+    backgroundColor: '#FEE2E2',
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  logoutText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#DC2626',
+  },
+  versionText: {
+    textAlign: 'center',
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: spacing.md,
+  },
+  
+  // Modal Styles (kept from original)
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: colors.overlay,
     justifyContent: 'center',
     alignItems: 'center',
   },
   editModal: {
-    width: '80%',
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 24,
+    width: '85%',
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.xl,
+    padding: spacing.lg,
+    ...shadows.strong,
   },
   editModalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 16,
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textPrimary,
+    marginBottom: spacing.md,
   },
   editInput: {
     borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    marginBottom: 16,
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    fontSize: typography.fontSize.base,
+    marginBottom: spacing.md,
+    backgroundColor: colors.surface,
   },
   editModalButtons: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
+    gap: spacing.xs,
   },
   cancelBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    marginRight: 8,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
   },
   cancelBtnText: {
-    color: '#666',
-    fontWeight: '500',
+    color: colors.textSecondary,
+    fontWeight: typography.fontWeight.medium,
   },
   saveBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    backgroundColor: '#2E7D32',
-    borderRadius: 8,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.md,
   },
   saveBtnText: {
-    color: 'white',
-    fontWeight: '500',
+    color: colors.textOnPrimary,
+    fontWeight: typography.fontWeight.medium,
   },
   diseaseModal: {
     width: '90%',
     maxHeight: '70%',
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 24,
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.xl,
+    padding: spacing.lg,
+    ...shadows.strong,
   },
   diseaseModalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 16,
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textPrimary,
+    marginBottom: spacing.md,
   },
   diseaseInput: {
     borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    marginBottom: 16,
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    fontSize: typography.fontSize.base,
+    marginBottom: spacing.md,
+    backgroundColor: colors.surface,
   },
   diseaseList: {
     maxHeight: 200,
-    marginBottom: 16,
+    marginBottom: spacing.md,
   },
   diseaseOption: {
-    paddingVertical: 12,
+    paddingVertical: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: colors.borderLight,
   },
   diseaseOptionText: {
-    fontSize: 14,
-    color: '#333',
+    fontSize: typography.fontSize.sm,
+    color: colors.textPrimary,
   },
   diseaseModalButtons: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
+    gap: spacing.xs,
   },
-  addBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    backgroundColor: '#2E7D32',
-    borderRadius: 8,
+  addBtnModal: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.md,
   },
-  addBtnText: {
-    color: 'white',
-    fontWeight: '500',
+  addBtnModalText: {
+    color: colors.textOnPrimary,
+    fontWeight: typography.fontWeight.medium,
+  },
+  
+  // Avatar styles
+  avatarEmoji: {
+    fontSize: 40,
+  },
+  avatarEditBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.soft,
+  },
+  avatarEditIcon: {
+    fontSize: 12,
+  },
+  avatarModal: {
+    width: '90%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: spacing.lg,
+    alignItems: 'center',
+    ...shadows.strong,
+  },
+  avatarModalTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 4,
+  },
+  avatarModalSubtitle: {
+    fontSize: 14,
+    color: colors.textMuted,
+    marginBottom: spacing.lg,
+  },
+  avatarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  avatarOption: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#F5F7FA',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  avatarOptionSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryPale,
+  },
+  avatarOptionEmoji: {
+    fontSize: 28,
+  },
+  avatarModalClose: {
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+  },
+  avatarModalCloseText: {
+    fontSize: 16,
+    color: colors.textMuted,
+    fontWeight: '600',
   },
 });
 

@@ -142,11 +142,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   secondary: {
-    backgroundColor: colors.secondary,
+    backgroundColor: colors.surfaceLight,
   },
   outline: {
     backgroundColor: 'transparent',
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: colors.primary,
   },
   ghost: {
@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.sm,
   },
   mediumText: {
-    fontSize: typography.fontSize.md,
+    fontSize: typography.fontSize.base,
   },
   largeText: {
     fontSize: typography.fontSize.lg,
@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
     color: colors.textOnPrimary,
   },
   secondaryText: {
-    color: colors.textOnPrimary,
+    color: colors.textPrimary,
   },
   outlineText: {
     color: colors.primary,
