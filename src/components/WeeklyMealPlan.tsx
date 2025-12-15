@@ -302,14 +302,6 @@ const WeeklyMealPlan: React.FC<WeeklyMealPlanProps> = ({
               ]}>
                 {date.getDate()}
               </Text>
-              {mealsCount > 0 && (
-                <View style={[
-                  styles.mealCountBadge,
-                  selectedDay === index && styles.mealCountBadgeActive,
-                ]}>
-                  <Text style={styles.mealCountText}>{mealsCount}</Text>
-                </View>
-              )}
               {day.isToday && <View style={styles.todayDot} />}
             </TouchableOpacity>
           );

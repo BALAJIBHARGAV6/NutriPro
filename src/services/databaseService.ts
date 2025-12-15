@@ -91,6 +91,17 @@ class DatabaseService {
       }
 
       // Save to user_profiles table using upsert (constraint now exists)
+      // Parse avatar type from avatar string if it's JSON
+      let avatarType = 1;
+      if (user.avatar) {
+        try {
+          const parsed = JSON.parse(user.avatar);
+          avatarType = parsed.type || 1;
+        } catch {
+          avatarType = 1;
+        }
+      }
+
       const profileData = {
         user_id: userId,
         age: user.age,
@@ -100,6 +111,7 @@ class DatabaseService {
         activity_level: user.exerciseLevel,
         goal: user.goal || 'maintain',
         target_weight: user.targetWeight,
+        avatar_type: avatarType,
         updated_at: new Date().toISOString(),
       };
 
@@ -193,12 +205,16 @@ class DatabaseService {
         ?.filter(r => r.restriction_type === 'allergy')
         .map(r => r.restriction_name) || [];
 
+      // Convert avatar_type to avatar JSON string
+      const avatarString = JSON.stringify({ type: profile.avatar_type || 1 });
+
       const user: User = {
         id: userId,
         email: userInfo?.email || '',
         name: userInfo?.full_name || '',
         fullName: userInfo?.full_name || '',
         avatarUrl: userInfo?.avatar_url,
+        avatar: avatarString,
         age: profile.age,
         gender: profile.gender,
         height: profile.height,
@@ -343,27 +359,39 @@ class DatabaseService {
   async saveDietaryRestrictions(userId: string, items: string[], type: 'allergy' | 'preference' | 'medical'): Promise<void> {
     if (!isSupabaseConfigured) return;
 
-    // Delete existing restrictions of this type
-    await supabase
-      .from(TABLES.DIETARY_RESTRICTIONS)
-      .delete()
-      .eq('user_id', userId)
-      .eq('restriction_type', type);
-
-    // Insert new ones
-    if (items.length > 0) {
-      const rows = items.map(name => ({
-        user_id: userId,
-        restriction_type: type,
-        restriction_name: name,
-        severity: type === 'allergy' ? 'severe' : 'moderate',
-      }));
-
-      const { error } = await supabase
+    try {
+      // Delete existing restrictions of this type
+      const { error: deleteError } = await supabase
         .from(TABLES.DIETARY_RESTRICTIONS)
-        .insert(rows);
+        .delete()
+        .eq('user_id', userId)
+        .eq('restriction_type', type);
 
-      if (error) console.error('Error saving dietary restrictions:', error);
+      if (deleteError) {
+        console.error('Error deleting old dietary restrictions:', deleteError);
+      }
+
+      // Insert new ones
+      if (items.length > 0) {
+        const rows = items.map(name => ({
+          user_id: userId,
+          restriction_type: type,
+          restriction_name: name,
+          severity: type === 'allergy' ? 'severe' : 'moderate',
+        }));
+
+        const { error } = await supabase
+          .from(TABLES.DIETARY_RESTRICTIONS)
+          .insert(rows)
+          .select();
+
+        if (error) {
+          console.error('Error saving dietary restrictions:', error);
+          throw error;
+        }
+      }
+    } catch (error) {
+      console.error('Error in saveDietaryRestrictions:', error);
     }
   }
 

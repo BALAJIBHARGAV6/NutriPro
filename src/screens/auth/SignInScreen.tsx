@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../../config/supabase';
 import { useAuthStore } from '../../store/authStore';
+import { textStyles, colors } from '../../constants/theme';
 
 const SignInScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -124,8 +125,8 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   backText: {
-    fontSize: 16,
-    color: '#2E7D32',
+    ...textStyles.body,
+    color: colors.primary,
   },
   content: {
     flex: 1,
@@ -141,13 +142,12 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1B5E20',
+    ...textStyles.h1,
+    color: colors.primaryDark,
     marginBottom: 8,
   },
   subtitle: {
-    fontSize: 16,
+    ...textStyles.body,
     color: '#757575',
     textAlign: 'center',
   },
@@ -173,9 +173,8 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   googleText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#1B5E20',
+    ...textStyles.button,
+    color: colors.primaryDark,
   },
   divider: {
     flexDirection: 'row',
@@ -188,26 +187,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#E0E0E0',
   },
   dividerText: {
+    ...textStyles.bodySmall,
     marginHorizontal: 16,
     color: '#757575',
-    fontSize: 14,
   },
   demoButton: {
     backgroundColor: '#FFFFFF',
     borderWidth: 2,
-    borderColor: '#2E7D32',
+    borderColor: colors.primary,
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 24,
     alignItems: 'center',
   },
   demoButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#2E7D32',
+    ...textStyles.button,
+    color: colors.primary,
   },
   demoNote: {
-    fontSize: 12,
+    ...textStyles.caption,
     color: '#9E9E9E',
     textAlign: 'center',
     marginTop: 16,
@@ -216,7 +214,7 @@ const styles = StyleSheet.create({
     marginTop: 32,
   },
   footerText: {
-    fontSize: 12,
+    ...textStyles.caption,
     color: '#757575',
     textAlign: 'center',
     lineHeight: 18,

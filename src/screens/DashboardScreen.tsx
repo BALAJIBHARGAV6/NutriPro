@@ -16,9 +16,7 @@ import { storageService } from '../services/storageService';
 import { databaseService } from '../services/databaseService';
 import { professionalAIService, Meal, DayPlan } from '../services/professionalAIService';
 import { isSupabaseConfigured } from '../config/supabase';
-import { colors, shadows, spacing, borderRadius, typography } from '../constants/theme';
-import WaterTracker from '../components/WaterTracker';
-import ProgressCharts from '../components/ProgressCharts';
+import { colors, shadows, spacing, borderRadius, typography, textStyles } from '../constants/theme';
 import WeeklyMealPlan from '../components/WeeklyMealPlan';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -503,9 +501,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
           </View>
         </View>
 
-        {/* Water Tracking */}
-        <WaterTracker userId={user.id} />
-
         {/* Quick Actions */}
         <View style={styles.quickActions}>
           <TouchableOpacity style={styles.quickActionBtn} onPress={onNavigateToRecipes}>
@@ -585,9 +580,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
           <Text style={styles.tipText}>{getHealthTip()}</Text>
         </View>
 
-        {/* Weekly Progress Charts */}
-        <ProgressCharts userId={user.id} calorieTarget={calorieTarget} />
-
         <View style={styles.bottomSpacer} />
       </ScrollView>
     </SafeAreaView>
@@ -616,7 +608,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: spacing.md,
-    fontSize: typography.fontSize.base,
+    ...textStyles.body,
     color: colors.textSecondary,
   },
   
@@ -636,13 +628,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   greeting: {
-    fontSize: typography.fontSize.sm,
+    ...textStyles.label,
     color: colors.textSecondary,
     marginBottom: 2,
   },
   userName: {
-    fontSize: typography.fontSize['2xl'],
-    fontWeight: typography.fontWeight.bold,
+    ...textStyles.h1,
     color: colors.textPrimary,
   },
   streakBadge: {
@@ -653,16 +644,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   streakNumber: {
-    fontSize: typography.fontSize.xl,
-    fontWeight: typography.fontWeight.bold,
+    ...textStyles.number,
     color: colors.primary,
   },
   streakLabel: {
-    fontSize: typography.fontSize.xs,
+    ...textStyles.labelSmall,
     color: colors.primaryDark,
   },
   dateText: {
-    fontSize: typography.fontSize.sm,
+    ...textStyles.caption,
     color: colors.textMuted,
     marginTop: spacing.xs,
   },
@@ -673,8 +663,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   sectionTitle: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.semibold,
+    ...textStyles.h4,
     color: colors.textPrimary,
     marginBottom: spacing.md,
   },
@@ -697,7 +686,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   statsCardLabel: {
-    fontSize: typography.fontSize.sm,
+    ...textStyles.label,
     color: colors.textSecondary,
     marginTop: spacing.sm,
   },
@@ -714,12 +703,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   circularValue: {
-    fontSize: typography.fontSize['2xl'],
-    fontWeight: typography.fontWeight.bold,
+    ...textStyles.number,
     color: colors.textPrimary,
   },
   circularLabel: {
-    fontSize: typography.fontSize.xs,
+    ...textStyles.labelSmall,
     color: colors.textMuted,
   },
   
@@ -733,11 +721,11 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   macroBarLabel: {
-    fontSize: typography.fontSize.xs,
+    ...textStyles.labelSmall,
     color: colors.textSecondary,
   },
   macroBarValue: {
-    fontSize: typography.fontSize.xs,
+    ...textStyles.labelSmall,
     fontWeight: typography.fontWeight.semibold,
     color: colors.textPrimary,
   },
@@ -792,8 +780,7 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeight.bold,
   },
   quickActionText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.semibold,
+    ...textStyles.button,
     color: colors.textOnPrimary,
   },
   
@@ -809,14 +796,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   sectionSubtext: {
-    fontSize: typography.fontSize.sm,
+    ...textStyles.bodySmall,
     color: colors.textMuted,
     marginBottom: spacing.md,
   },
   refreshLink: {
-    fontSize: typography.fontSize.sm,
+    ...textStyles.label,
     color: colors.primary,
-    fontWeight: typography.fontWeight.medium,
   },
   mealCount: {
     backgroundColor: colors.primaryPale,
@@ -825,9 +811,8 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
   },
   mealCountText: {
-    fontSize: typography.fontSize.xs,
+    ...textStyles.labelSmall,
     color: colors.primaryDark,
-    fontWeight: typography.fontWeight.medium,
   },
   mealsTimeline: {
     marginTop: spacing.sm,
@@ -873,11 +858,8 @@ const styles = StyleSheet.create({
     marginRight: spacing.xs,
   },
   mealTitle: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.semibold,
+    ...textStyles.overline,
     color: colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
   aiTag: {
     backgroundColor: colors.info + '15',
@@ -910,9 +892,8 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
   },
   regenerateBtnText: {
-    fontSize: typography.fontSize.xs,
+    ...textStyles.labelSmall,
     color: colors.textSecondary,
-    fontWeight: typography.fontWeight.medium,
   },
   mealContent: {
     flexDirection: 'row',
@@ -927,13 +908,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   mealName: {
-    fontSize: typography.fontSize.base,
+    ...textStyles.body,
     fontWeight: typography.fontWeight.semibold,
     color: colors.textPrimary,
     marginBottom: 2,
   },
   mealMacros: {
-    fontSize: typography.fontSize.xs,
+    ...textStyles.caption,
     color: colors.textMuted,
   },
   mealActions: {
@@ -949,9 +930,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   viewRecipeBtnText: {
-    fontSize: typography.fontSize.sm,
+    ...textStyles.buttonSmall,
     color: colors.textSecondary,
-    fontWeight: typography.fontWeight.medium,
   },
   addMealBtn: {
     flex: 1,
@@ -961,9 +941,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   addMealBtnText: {
-    fontSize: typography.fontSize.sm,
+    ...textStyles.buttonSmall,
     color: colors.textOnPrimary,
-    fontWeight: typography.fontWeight.semibold,
   },
   viewRecipeBtnFull: {
     paddingVertical: spacing.sm,
@@ -990,12 +969,12 @@ const styles = StyleSheet.create({
     marginRight: spacing.xs,
   },
   tipTitle: {
-    fontSize: typography.fontSize.sm,
+    ...textStyles.label,
     fontWeight: typography.fontWeight.semibold,
     color: colors.primaryDark,
   },
   tipText: {
-    fontSize: typography.fontSize.sm,
+    ...textStyles.bodySmall,
     color: colors.textSecondary,
     lineHeight: 20,
   },
@@ -1029,8 +1008,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   suggestionTypeText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.semibold,
+    ...textStyles.label,
     color: colors.primary,
   },
   suggestionAIBadge: {
@@ -1040,9 +1018,8 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
   },
   suggestionAIText: {
-    fontSize: typography.fontSize.xs,
+    ...textStyles.labelSmall,
     color: '#FFFFFF',
-    fontWeight: typography.fontWeight.medium,
   },
   suggestionContent: {
     padding: spacing.md,
@@ -1061,7 +1038,7 @@ const styles = StyleSheet.create({
     fontSize: 32,
   },
   suggestionName: {
-    fontSize: typography.fontSize.base,
+    ...textStyles.body,
     fontWeight: typography.fontWeight.semibold,
     color: colors.textPrimary,
     textAlign: 'center',
@@ -1078,7 +1055,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
   },
   nutritionPillText: {
-    fontSize: typography.fontSize.sm,
+    ...textStyles.label,
     fontWeight: typography.fontWeight.semibold,
     color: colors.primary,
   },
@@ -1096,12 +1073,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   macroValue: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.bold,
+    ...textStyles.numberSmall,
+    fontSize: 14,
     color: colors.textPrimary,
   },
   macroLabel: {
-    fontSize: typography.fontSize.xs,
+    ...textStyles.caption,
     color: colors.textMuted,
     marginTop: 2,
   },
@@ -1123,9 +1100,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   suggestionViewBtnText: {
-    fontSize: typography.fontSize.sm,
+    ...textStyles.buttonSmall,
     color: colors.textSecondary,
-    fontWeight: typography.fontWeight.medium,
   },
   suggestionAddBtn: {
     flex: 1,
@@ -1135,9 +1111,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   suggestionAddBtnText: {
-    fontSize: typography.fontSize.sm,
+    ...textStyles.buttonSmall,
     color: '#FFFFFF',
-    fontWeight: typography.fontWeight.semibold,
   },
   suggestionRefresh: {
     padding: spacing.md,
@@ -1147,9 +1122,8 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   suggestionRefreshText: {
-    fontSize: typography.fontSize.sm,
+    ...textStyles.label,
     color: colors.primary,
-    fontWeight: typography.fontWeight.medium,
   },
 });
 

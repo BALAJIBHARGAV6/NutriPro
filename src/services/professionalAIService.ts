@@ -135,54 +135,78 @@ export interface DayPlan {
 
 class ProfessionalAIService {
 
-  private async callGroq(prompt: string): Promise<string> {
+  private async callGroq(prompt: string, retryCount = 0): Promise<string> {
     if (!GROQ_API_KEY) {
       console.error('Groq API key not configured');
       throw new Error('Groq API key not configured');
     }
     
+    const maxRetries = 3;
+    const baseDelay = 2000; // 2 seconds
+    
     console.log('🤖 Calling Groq API...');
     
-    const response = await fetch(GROQ_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${GROQ_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
-        messages: [
-          { 
-            role: 'system', 
-            content: 'You are a nutritionist. Respond with ONLY valid JSON, no markdown or text.' 
-          },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.7,
-        max_tokens: 1024, // Reduced from 2048 to save tokens
-        top_p: 0.9,
-      }),
-    });
+    try {
+      const response = await fetch(GROQ_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${GROQ_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: 'llama-3.1-8b-instant',
+          messages: [
+            { 
+              role: 'system', 
+              content: 'You are a nutritionist. Respond with ONLY valid JSON, no markdown or text.' 
+            },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.7,
+          max_tokens: 800, // Reduced from 1024 to save tokens
+          top_p: 0.9,
+        }),
+      });
 
-    console.log('Groq response status:', response.status);
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Groq API error response:', errorText);
-      // Include error details in thrown error for rate limit handling
-      throw new Error(`Groq API Error: ${response.status} - ${errorText}`);
+      console.log('Groq response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Groq API error response:', errorText);
+        
+        // Check if it's a rate limit error
+        if (response.status === 429 && retryCount < maxRetries) {
+          // Parse retry delay from error message or use exponential backoff
+          const delay = baseDelay * Math.pow(2, retryCount);
+          console.log(`⏳ Rate limited. Retrying in ${delay}ms... (attempt ${retryCount + 1}/${maxRetries})`);
+          
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return this.callGroq(prompt, retryCount + 1);
+        }
+        
+        throw new Error(`Groq API Error: ${response.status} - ${errorText}`);
+      }
+      
+      const data = await response.json();
+      const text = data.choices?.[0]?.message?.content;
+      
+      if (!text) {
+        console.error('Empty response from Groq');
+        throw new Error('Empty response from Groq');
+      }
+      
+      console.log('✅ Groq API response received');
+      return text;
+    } catch (error: any) {
+      // If network error and retries available, retry
+      if (retryCount < maxRetries && !error.message.includes('API Error')) {
+        const delay = baseDelay * Math.pow(2, retryCount);
+        console.log(`⏳ Network error. Retrying in ${delay}ms... (attempt ${retryCount + 1}/${maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return this.callGroq(prompt, retryCount + 1);
+      }
+      throw error;
     }
-    
-    const data = await response.json();
-    const text = data.choices?.[0]?.message?.content;
-    
-    if (!text) {
-      console.error('Empty response from Groq');
-      throw new Error('Empty response from Groq');
-    }
-    
-    console.log('✅ Groq API response received');
-    return text;
   }
 
   private createPersonalizedPrompt(mealType: string, profile: UserProfile, additionalPrefs?: string): string {

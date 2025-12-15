@@ -10,11 +10,13 @@ import {
   Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import IllustratedAvatar from '../components/IllustratedAvatar';
 import { User } from '../types';
 import { storageService } from '../services/storageService';
 import { databaseService } from '../services/databaseService';
 import { isSupabaseConfigured } from '../config/supabase';
-import { colors, shadows, spacing, borderRadius, typography } from '../constants/theme';
+import { colors, shadows, spacing, borderRadius, typography, textStyles } from '../constants/theme';
 
 interface ProfileScreenProps {
   user: User;
@@ -36,11 +38,23 @@ const ProfileScreenNew: React.FC<ProfileScreenProps> = ({
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [selectedAvatar, setSelectedAvatar] = useState(user.avatar || '👤');
 
-  // Animated avatar options
+  // Modern teenage avatar options with 6 girls and 6 boys
   const avatarOptions = [
-    '👤', '🧑', '👨', '👩', '🧔', '👱', '👸', '🤴', '🦸', '🦹',
-    '🧙', '🧝', '🧛', '🧟', '🥷', '🦊', '🐱', '🐶', '🐼', '🦁',
-    '🐯', '🐨', '🐵', '🦋', '🌸', '⭐', '🌟', '💫', '🔥', '💎',
+    // FEMALE TEENAGERS (1-6)
+    { type: 1, gradient: ['#FFB4C5', '#E89BAB'], name: 'Emma' },      // Long hair girl
+    { type: 2, gradient: ['#A8D5FF', '#7AB8E8'], name: 'Sophia' },    // Wavy hair girl
+    { type: 3, gradient: ['#B4FFD9', '#8BE8B5'], name: 'Maya' },      // Curly/afro girl
+    { type: 4, gradient: ['#FFD4E8', '#E8B0CD'], name: 'Olivia' },    // Ponytail girl
+    { type: 5, gradient: ['#D4E8FF', '#B0CDE8'], name: 'Ava' },       // Side braid girl
+    { type: 6, gradient: ['#FFE8B4', '#E8CD90'], name: 'Isabella' },  // Bob cut girl
+    
+    // MALE TEENAGERS (7-12)
+    { type: 7, gradient: ['#B4A3FF', '#8B7FD6'], name: 'Liam' },      // Modern short cut boy
+    { type: 8, gradient: ['#FFD4B4', '#E8B590'], name: 'Noah' },      // Styled quiff boy
+    { type: 9, gradient: ['#E8FFB4', '#CDE890'], name: 'Oliver' },    // Fade haircut boy
+    { type: 10, gradient: ['#B4E8FF', '#90CDE8'], name: 'Ethan' },    // Messy hair boy
+    { type: 11, gradient: ['#FFB4E8', '#E890CD'], name: 'Mason' },    // Side-swept boy
+    { type: 12, gradient: ['#D4FFB4', '#B5E890'], name: 'Lucas' },    // Curly short hair boy
   ];
 
   const commonDiseases = [
@@ -164,22 +178,24 @@ const ProfileScreenNew: React.FC<ProfileScreenProps> = ({
     );
   };
 
-  const handleAvatarSelect = async (avatar: string) => {
-    setSelectedAvatar(avatar);
+  const handleAvatarSelect = async (avatarData: { type: number; gradient: string[]; name: string }) => {
+    const avatarString = JSON.stringify(avatarData);
+    setSelectedAvatar(avatarString);
     setShowAvatarModal(false);
     
     // Update in Supabase first
     if (isSupabaseConfigured) {
       try {
-        await databaseService.updateUserProfile({ avatar });
+        await databaseService.updateUserProfile({ avatar: avatarString });
         console.log('✅ Avatar updated in Supabase');
       } catch (error) {
         console.error('Error updating avatar:', error);
       }
     }
     
-    await storageService.updateUser({ avatar });
-    onUpdateUser({ avatar });
+    // Always update local storage
+    await storageService.updateUser({ avatar: avatarString });
+    onUpdateUser({ avatar: avatarString });
   };
 
   const handleLogout = () => {
@@ -299,9 +315,29 @@ const ProfileScreenNew: React.FC<ProfileScreenProps> = ({
         {/* Profile Card */}
         <View style={styles.profileCard}>
           <TouchableOpacity style={styles.avatarWrapper} onPress={() => setShowAvatarModal(true)}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarEmoji}>{selectedAvatar}</Text>
-            </View>
+            <LinearGradient
+              colors={(() => {
+                try {
+                  const parsed = JSON.parse(selectedAvatar);
+                  return parsed.gradient || [colors.primary, colors.primaryDark];
+                } catch {
+                  return [colors.primary, colors.primaryDark];
+                }
+              })()}
+              style={styles.avatar}
+            >
+              <IllustratedAvatar
+                type={(() => {
+                  try {
+                    return JSON.parse(selectedAvatar).type || 1;
+                  } catch {
+                    return 1;
+                  }
+                })()}
+                size={80}
+                backgroundColor="transparent"
+              />
+            </LinearGradient>
             <View style={styles.onlineIndicator} />
             <View style={styles.avatarEditBadge}>
               <Text style={styles.avatarEditIcon}>✏️</Text>
@@ -323,20 +359,46 @@ const ProfileScreenNew: React.FC<ProfileScreenProps> = ({
               <Text style={styles.avatarModalTitle}>Choose Your Avatar</Text>
               <Text style={styles.avatarModalSubtitle}>Select an avatar that represents you</Text>
               
-              <View style={styles.avatarGrid}>
-                {avatarOptions.map((avatar, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={[
-                      styles.avatarOption,
-                      selectedAvatar === avatar && styles.avatarOptionSelected
-                    ]}
-                    onPress={() => handleAvatarSelect(avatar)}
-                  >
-                    <Text style={styles.avatarOptionEmoji}>{avatar}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              <ScrollView 
+                style={styles.avatarScrollView}
+                showsVerticalScrollIndicator={false}
+              >
+                <View style={styles.avatarGrid}>
+                  {avatarOptions.map((avatar, index) => {
+                    const isSelected = (() => {
+                      try {
+                        const parsed = JSON.parse(selectedAvatar);
+                        return parsed.type === avatar.type && parsed.name === avatar.name;
+                      } catch {
+                        return false;
+                      }
+                    })();
+                    
+                    return (
+                      <TouchableOpacity
+                        key={index}
+                        style={[
+                          styles.avatarOption,
+                          isSelected && styles.avatarOptionSelected
+                        ]}
+                        onPress={() => handleAvatarSelect(avatar)}
+                      >
+                        <LinearGradient
+                          colors={avatar.gradient}
+                          style={styles.avatarOptionGradient}
+                        >
+                          <IllustratedAvatar
+                            type={avatar.type}
+                            size={64}
+                            backgroundColor="transparent"
+                          />
+                        </LinearGradient>
+                        <Text style={styles.avatarOptionName}>{avatar.name}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </ScrollView>
               
               <TouchableOpacity 
                 style={styles.avatarModalClose}
@@ -352,11 +414,7 @@ const ProfileScreenNew: React.FC<ProfileScreenProps> = ({
         <View style={styles.statsGrid}>
           <View style={styles.statBox}>
             <Text style={styles.statValue}>{user.streak || 0}</Text>
-            <Text style={styles.statLabel}>Day Streak</Text>
-          </View>
-          <View style={[styles.statBox, styles.statBoxHighlight]}>
-            <Text style={[styles.statValue, { color: '#FFF' }]}>{user.totalMealsLogged || 0}</Text>
-            <Text style={[styles.statLabel, { color: 'rgba(255,255,255,0.8)' }]}>Meals Logged</Text>
+            <Text style={styles.statLabel}>Day Streak 🔥</Text>
           </View>
           <View style={styles.statBox}>
             <Text style={styles.statValue}>{bmi.value.toFixed(1)}</Text>
@@ -379,6 +437,16 @@ const ProfileScreenNew: React.FC<ProfileScreenProps> = ({
             <TouchableOpacity onPress={() => handleEdit('fullName', user.fullName || '')}>
               <Text style={styles.detailAction}>Edit</Text>
             </TouchableOpacity>
+          </View>
+
+          <View style={styles.detailRow}>
+            <View style={styles.detailLeft}>
+              <View style={styles.detailIconBox}><Text style={styles.detailIcon}>📧</Text></View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.detailLabel}>Email</Text>
+                <Text style={styles.detailValue} numberOfLines={1}>{user.email || 'Not set'}</Text>
+              </View>
+            </View>
           </View>
 
           <View style={styles.detailRow}>
@@ -562,12 +630,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F7FA',
   },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: '700',
+    ...textStyles.h1,
     color: colors.textPrimary,
   },
   headerSubtitle: {
-    fontSize: 14,
+    ...textStyles.bodySmall,
     color: colors.textMuted,
     marginTop: 4,
   },
@@ -594,8 +661,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarLetter: {
-    fontSize: 24,
-    fontWeight: '700',
+    ...textStyles.h2,
     color: '#FFFFFF',
   },
   onlineIndicator: {
@@ -614,14 +680,14 @@ const styles = StyleSheet.create({
     marginLeft: spacing.md,
   },
   profileName: {
-    fontSize: 18,
-    fontWeight: '600',
+    ...textStyles.h4,
     color: colors.textPrimary,
   },
   profileEmail: {
-    fontSize: 13,
-    color: colors.textMuted,
-    marginTop: 2,
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginTop: 4,
+    fontWeight: '500',
   },
   editProfileBtn: {
     paddingHorizontal: spacing.md,
@@ -630,8 +696,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   editProfileText: {
-    fontSize: 13,
-    fontWeight: '600',
+    ...textStyles.label,
     color: colors.primary,
   },
   
@@ -654,12 +719,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   statValue: {
-    fontSize: 22,
-    fontWeight: '700',
+    ...textStyles.number,
     color: colors.textPrimary,
   },
   statLabel: {
-    fontSize: 11,
+    ...textStyles.labelSmall,
     color: colors.textMuted,
     marginTop: 4,
     textAlign: 'center',
@@ -681,15 +745,12 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   sectionTitle: {
-    fontSize: 12,
-    fontWeight: '600',
+    ...textStyles.overline,
     color: colors.textMuted,
-    letterSpacing: 0.5,
     marginBottom: spacing.md,
   },
   addBtn: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...textStyles.label,
     color: colors.primary,
   },
   
@@ -720,17 +781,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   detailLabel: {
-    fontSize: 12,
+    ...textStyles.caption,
     color: colors.textMuted,
   },
   detailValue: {
-    fontSize: 15,
+    ...textStyles.body,
     fontWeight: '500',
     color: colors.textPrimary,
   },
   detailAction: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...textStyles.label,
     color: colors.primary,
   },
   
@@ -754,14 +814,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   metricNumber: {
+    ...textStyles.displaySmall,
     fontSize: 28,
-    fontWeight: '800',
     color: colors.textPrimary,
   },
   metricType: {
-    fontSize: 13,
+    ...textStyles.label,
     color: colors.textMuted,
-    fontWeight: '500',
   },
   metricBtn: {
     marginTop: spacing.sm,
@@ -771,13 +830,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   metricBtnText: {
+    ...textStyles.buttonSmall,
     fontSize: 12,
-    fontWeight: '600',
     color: '#FFFFFF',
   },
   bmiCategory: {
-    fontSize: 12,
-    fontWeight: '600',
+    ...textStyles.labelSmall,
     color: colors.primary,
     marginTop: 4,
     backgroundColor: colors.primaryPale,
@@ -800,7 +858,7 @@ const styles = StyleSheet.create({
     marginRight: spacing.sm,
   },
   emptyText: {
-    fontSize: 14,
+    ...textStyles.bodySmall,
     color: colors.textMuted,
   },
   
@@ -823,8 +881,7 @@ const styles = StyleSheet.create({
     ...shadows.soft,
   },
   chipText: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...textStyles.label,
     color: '#DC2626',
   },
   chipClose: {
@@ -842,8 +899,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   levelBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
+    ...textStyles.labelSmall,
     color: '#FFFFFF',
   },
   
@@ -855,7 +911,6 @@ const styles = StyleSheet.create({
     borderTopColor: '#F0F0F0',
   },
   goalsTitle: {
-    fontSize: 12,
     color: colors.textMuted,
     marginBottom: spacing.sm,
   },
@@ -1030,7 +1085,9 @@ const styles = StyleSheet.create({
   
   // Avatar styles
   avatarEmoji: {
-    fontSize: 40,
+    fontSize: 48,
+    fontWeight: '300',
+    color: '#FFFFFF',
   },
   avatarEditBadge: {
     position: 'absolute',
@@ -1049,14 +1106,15 @@ const styles = StyleSheet.create({
   },
   avatarModal: {
     width: '90%',
+    maxHeight: '80%',
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
-    padding: spacing.lg,
+    padding: spacing.xl,
     alignItems: 'center',
     ...shadows.strong,
   },
   avatarModalTitle: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '700',
     color: colors.textPrimary,
     marginBottom: 4,
@@ -1065,34 +1123,54 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textMuted,
     marginBottom: spacing.lg,
+    textAlign: 'center',
+  },
+  avatarScrollView: {
+    width: '100%',
+    maxHeight: 400,
   },
   avatarGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
+    gap: spacing.md,
+    paddingVertical: spacing.md,
   },
   avatarOption: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#F5F7FA',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  avatarOptionGradient: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: 'transparent',
+    ...shadows.soft,
   },
   avatarOptionSelected: {
     borderColor: colors.primary,
-    backgroundColor: colors.primaryPale,
+    transform: [{ scale: 1.1 }],
   },
   avatarOptionEmoji: {
-    fontSize: 28,
+    fontSize: 36,
+    fontWeight: '300',
+    color: '#FFFFFF',
+  },
+  avatarOptionName: {
+    fontSize: 11,
+    color: colors.textMuted,
+    marginTop: 4,
+    fontWeight: '500',
   },
   avatarModalClose: {
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.xl,
+    marginTop: spacing.md,
+    backgroundColor: colors.surfaceLight,
+    borderRadius: borderRadius.lg,
   },
   avatarModalCloseText: {
     fontSize: 16,

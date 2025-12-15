@@ -13,14 +13,60 @@ import {
   Easing,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Path, Circle, G } from 'react-native-svg';
 import { User, DailyLog } from '../types';
 import { storageService } from '../services/storageService';
 import { databaseService } from '../services/databaseService';
 import { professionalAIService, Meal, UserProfile } from '../services/professionalAIService';
 import { isSupabaseConfigured } from '../config/supabase';
-import { colors, shadows, spacing, borderRadius, typography } from '../constants/theme';
+import { colors, shadows, spacing, borderRadius, typography, textStyles } from '../constants/theme';
+import WaterTracker from '../components/WaterTracker';
+import ProgressCharts from '../components/ProgressCharts';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+// Nutrition colors
+const NUTRITION_COLORS = {
+  protein: { primary: '#8B5CF6', secondary: '#A78BFA', bg: '#F5F3FF' },
+  carbs: { primary: '#F59E0B', secondary: '#FBBF24', bg: '#FFFBEB' },
+  fats: { primary: '#EC4899', secondary: '#F472B6', bg: '#FDF2F8' },
+  sugar: { primary: '#EF4444', secondary: '#F87171', bg: '#FEF2F2' },
+  calories: { primary: '#10B981', secondary: '#34D399', bg: '#ECFDF5' },
+};
+
+// Nutrition Icons
+const ProteinIcon = ({ size = 20, color = NUTRITION_COLORS.protein.primary }: { size?: number; color?: string }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill={color} />
+  </Svg>
+);
+
+const CarbsIcon = ({ size = 20, color = NUTRITION_COLORS.carbs.primary }: { size?: number; color?: string }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M12 3L4 9v12h16V9l-8-6zm0 2.5L18 10v9H6v-9l6-4.5z" fill={color} />
+    <Circle cx="12" cy="14" r="3" fill={color} />
+  </Svg>
+);
+
+const FatsIcon = ({ size = 20, color = NUTRITION_COLORS.fats.primary }: { size?: number; color?: string }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" fill={color} opacity="0.3" />
+    <Path d="M12 6c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6z" fill={color} />
+  </Svg>
+);
+
+const SugarIcon = ({ size = 20, color = NUTRITION_COLORS.sugar.primary }: { size?: number; color?: string }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M12 3L3 8v8l9 5 9-5V8l-9-5zm0 2.18l6 3.33v5.98l-6 3.33-6-3.33V8.51l6-3.33z" fill={color} />
+  </Svg>
+);
+
+const FireIcon = ({ size = 20, color = NUTRITION_COLORS.calories.primary }: { size?: number; color?: string }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M12 23c-4.97 0-9-4.03-9-9 0-3.53 2.04-6.71 5-8.18V2l3 3 3-3v3.82c2.96 1.47 5 4.65 5 8.18 0 4.97-4.03 9-9 9zm0-16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" fill={color} />
+  </Svg>
+);
 
 interface MealsTrackerScreenProps {
   user: User;
@@ -43,15 +89,9 @@ const MealsTrackerScreen: React.FC<MealsTrackerScreenProps> = ({
     sugar: 0,
     mealsCount: 0,
   });
-  const [weeklyData, setWeeklyData] = useState<boolean[]>([]);
-  
   // Loading state for smooth transitions
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  
-  // Water intake state
-  const [waterIntake, setWaterIntake] = useState(0);
-  const [waterTarget, setWaterTarget] = useState(8); // glasses per day
   
   // Day completion state
   const [isDayComplete, setIsDayComplete] = useState(false);
@@ -65,17 +105,6 @@ const MealsTrackerScreen: React.FC<MealsTrackerScreenProps> = ({
   // Loading animation
   const spinValue = useRef(new Animated.Value(0)).current;
   const pulseValue = useRef(new Animated.Value(1)).current;
-  
-  // Calculate water target based on user's diseases
-  useEffect(() => {
-    let target = 8; // default 8 glasses
-    if (user.diseases) {
-      if (user.diseases.includes('Diabetes')) target = 10;
-      if (user.diseases.includes('Hypertension')) target = 10;
-      if (user.diseases.includes('Kidney Disease')) target = 6;
-    }
-    setWaterTarget(target);
-  }, [user.diseases]);
 
   const calorieTarget = calculateCalorieTarget();
 
@@ -128,48 +157,16 @@ const MealsTrackerScreen: React.FC<MealsTrackerScreenProps> = ({
 
   useEffect(() => {
     loadDailyData();
-    loadWeeklyData();
-    loadWaterIntake();
   }, [selectedDate]);
-  
-  // Load water intake from storage
-  const loadWaterIntake = async () => {
-    const dateStr = selectedDate.toISOString().split('T')[0];
-    try {
-      const stored = await storageService.getWaterIntake(user.id, dateStr);
-      setWaterIntake(stored || 0);
-    } catch (error) {
-      setWaterIntake(0);
-    }
-  };
-  
-  // Add water glass
-  const addWaterGlass = async () => {
-    if (waterIntake >= waterTarget) return;
-    const newIntake = waterIntake + 1;
-    setWaterIntake(newIntake);
-    const dateStr = selectedDate.toISOString().split('T')[0];
-    await storageService.saveWaterIntake(user.id, dateStr, newIntake);
-  };
-  
-  // Remove water glass
-  const removeWaterGlass = async () => {
-    if (waterIntake <= 0) return;
-    const newIntake = waterIntake - 1;
-    setWaterIntake(newIntake);
-    const dateStr = selectedDate.toISOString().split('T')[0];
-    await storageService.saveWaterIntake(user.id, dateStr, newIntake);
-  };
   
   // Mark day as complete and update streak
   const markDayComplete = async () => {
     const mealsComplete = dailyLogs.length >= 3; // At least 3 meals
-    const waterComplete = waterIntake >= waterTarget;
     
-    if (!mealsComplete || !waterComplete) {
+    if (!mealsComplete) {
       Alert.alert(
         'Cannot Complete Day',
-        `Please complete:\n${!mealsComplete ? '• Log at least 3 meals\n' : ''}${!waterComplete ? `• Drink ${waterTarget} glasses of water` : ''}`,
+        'Please log at least 3 meals to complete your day.',
         [{ text: 'OK' }]
       );
       return;
@@ -279,34 +276,6 @@ const MealsTrackerScreen: React.FC<MealsTrackerScreenProps> = ({
     }
   };
 
-  const loadWeeklyData = async () => {
-    const weekData: boolean[] = [];
-    const today = new Date();
-    const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - today.getDay());
-
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(startOfWeek);
-      date.setDate(startOfWeek.getDate() + i);
-      const dateStr = date.toISOString().split('T')[0];
-      
-      // Try Supabase first
-      let logs: DailyLog[] = [];
-      if (isSupabaseConfigured) {
-        try {
-          logs = await databaseService.getDailyLogs(dateStr);
-        } catch (error) {
-          logs = await storageService.getDailyLogs(user.id, dateStr);
-        }
-      } else {
-        logs = await storageService.getDailyLogs(user.id, dateStr);
-      }
-      
-      weekData.push(logs.length > 0);
-    }
-    setWeeklyData(weekData);
-  };
-
   const handleRemoveMeal = async (logId: string) => {
     Alert.alert(
       'Remove Meal',
@@ -354,6 +323,16 @@ const MealsTrackerScreen: React.FC<MealsTrackerScreenProps> = ({
       dinner: '🍽️',
     };
     return icons[mealType] || '🍽️';
+  };
+
+  const getMealGradient = (mealType: string): [string, string] => {
+    const gradients: Record<string, [string, string]> = {
+      breakfast: ['#FEF3C7', '#FDE68A'],
+      lunch: ['#DBEAFE', '#BFDBFE'],
+      snack: ['#D1FAE5', '#A7F3D0'],
+      dinner: ['#E0E7FF', '#C7D2FE'],
+    };
+    return gradients[mealType] || ['#F0F9FF', '#E0F2FE'];
   };
 
   const formatTime = (timestamp: string): string => {
@@ -500,178 +479,124 @@ const MealsTrackerScreen: React.FC<MealsTrackerScreenProps> = ({
           </View>
         </View>
 
-        {/* Date Selector */}
-        <View style={styles.dateSelector}>
-          <TouchableOpacity onPress={() => changeDate(-1)} style={styles.dateArrow}>
-            <Text style={styles.dateArrowText}>‹</Text>
+        {/* Date Selector - Simple Professional Design */}
+        <View style={styles.dateRow}>
+          <TouchableOpacity onPress={() => changeDate(-1)} style={styles.dateBtn}>
+            <Text style={styles.dateBtnText}>‹</Text>
           </TouchableOpacity>
-          <View style={styles.dateCenter}>
-            <Text style={styles.dateText}>{formatDate(selectedDate)}</Text>
-            <Text style={styles.dateDayName}>
-              {selectedDate.toLocaleDateString('en-US', { weekday: 'long' })}
+          
+          <View style={styles.dateInfo}>
+            <Text style={styles.dateMainText}>
+              {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
             </Text>
-          </View>
-          <TouchableOpacity onPress={() => changeDate(1)} style={styles.dateArrow}>
-            <Text style={styles.dateArrowText}>›</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Daily Progress Cards Row */}
-        <View style={styles.progressCardsRow}>
-          {/* Calories Card */}
-          <View style={styles.progressCard}>
-            <View style={styles.progressCardIcon}>
-              <Text style={styles.progressCardEmoji}>🔥</Text>
-            </View>
-            <Text style={styles.progressCardValue}>{dailyTotals.calories}</Text>
-            <Text style={styles.progressCardLabel}>/ {calorieTarget} cal</Text>
-            <View style={styles.miniProgressBar}>
-              <View style={[styles.miniProgressFill, { width: `${Math.min(progressPercentage, 100)}%` }]} />
-            </View>
+            <Text style={styles.dateYearText}>{selectedDate.getFullYear()}</Text>
           </View>
           
-          {/* Water Card */}
-          <View style={styles.progressCard}>
-            <View style={styles.progressCardIcon}>
-              <Text style={styles.progressCardEmoji}>💧</Text>
-            </View>
-            <Text style={styles.progressCardValue}>{waterIntake}</Text>
-            <Text style={styles.progressCardLabel}>/ {waterTarget} glasses</Text>
-            <View style={styles.miniProgressBar}>
-              <View style={[styles.miniProgressFill, styles.waterFill, { width: `${Math.min((waterIntake / waterTarget) * 100, 100)}%` }]} />
-            </View>
-          </View>
+          <TouchableOpacity onPress={() => changeDate(1)} style={styles.dateBtn}>
+            <Text style={styles.dateBtnText}>›</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Water Intake Section */}
-        <View style={styles.waterSection}>
-          <Text style={styles.sectionTitle}>💧 Daily Water Intake</Text>
-          {user.diseases && user.diseases.length > 0 && (
-            <Text style={styles.waterRecommendation}>
-              Recommended: {waterTarget} glasses for {user.diseases[0]}
-            </Text>
-          )}
-          <View style={styles.waterGlasses}>
-            {[...Array(waterTarget)].map((_, index) => (
-              <TouchableOpacity 
-                key={index}
-                style={[styles.waterGlass, index < waterIntake && styles.waterGlassFilled]}
-                onPress={() => index < waterIntake ? removeWaterGlass() : addWaterGlass()}
-              >
-                <Text style={styles.waterGlassIcon}>{index < waterIntake ? '💧' : '○'}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <View style={styles.waterActions}>
-            <TouchableOpacity style={styles.waterBtn} onPress={removeWaterGlass} disabled={waterIntake <= 0}>
-              <Text style={styles.waterBtnText}>−</Text>
-            </TouchableOpacity>
-            <Text style={styles.waterCount}>{waterIntake} / {waterTarget}</Text>
-            <TouchableOpacity style={[styles.waterBtn, styles.waterBtnAdd]} onPress={addWaterGlass} disabled={waterIntake >= waterTarget}>
-              <Text style={[styles.waterBtnText, styles.waterBtnTextAdd]}>+</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+        {/* Water Tracking - Professional Design */}
+        <WaterTracker dailyTarget={2500} />
 
-        {/* Macros Summary */}
-        <View style={styles.macrosSection}>
-          <Text style={styles.sectionTitle}>📊 Nutrition Breakdown</Text>
-          <View style={styles.macroGrid}>
-            <View style={styles.macroItem}>
-              <View style={[styles.macroDot, { backgroundColor: colors.protein }]} />
-              <Text style={styles.macroLabel}>Protein</Text>
-              <Text style={styles.macroValue}>{dailyTotals.protein}g</Text>
+        {/* Your Meals Section - Modern Design */}
+        <View style={styles.mealsSectionModern}>
+          <View style={styles.mealsSectionHeaderModern}>
+            <View style={styles.mealsTitleRow}>
+              <View style={styles.mealsIconWrapper}>
+                <Text style={styles.mealsIcon}>🍽️</Text>
+              </View>
+              <View>
+                <Text style={styles.mealsTitleModern}>Your Meals</Text>
+                <Text style={styles.mealsSubtitle}>Today's food log</Text>
+              </View>
             </View>
-            <View style={styles.macroItem}>
-              <View style={[styles.macroDot, { backgroundColor: colors.carbs }]} />
-              <Text style={styles.macroLabel}>Carbs</Text>
-              <Text style={styles.macroValue}>{dailyTotals.carbs}g</Text>
-            </View>
-            <View style={styles.macroItem}>
-              <View style={[styles.macroDot, { backgroundColor: colors.fats }]} />
-              <Text style={styles.macroLabel}>Fats</Text>
-              <Text style={styles.macroValue}>{dailyTotals.fats}g</Text>
-            </View>
-            <View style={styles.macroItem}>
-              <View style={[styles.macroDot, { backgroundColor: colors.sugar }]} />
-              <Text style={styles.macroLabel}>Sugar</Text>
-              <Text style={styles.macroValue}>{dailyTotals.sugar}g</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Your Meals Section */}
-        <View style={styles.mealsSection}>
-          <View style={styles.mealsSectionHeader}>
-            <Text style={styles.sectionTitle}>Your Meals</Text>
-            <View style={styles.mealsBadge}>
-              <Text style={styles.mealsBadgeText}>{dailyLogs.length}/4</Text>
+            <View style={styles.mealsBadgeModern}>
+              <Text style={styles.mealsBadgeNumber}>{dailyLogs.length}</Text>
+              <Text style={styles.mealsBadgeDivider}>/</Text>
+              <Text style={styles.mealsBadgeTotal}>4</Text>
             </View>
           </View>
           
           {dailyLogs.length === 0 ? (
-            <View style={styles.emptyState}>
-              <View style={styles.emptyIconContainer}>
-                <Text style={styles.emptyIcon}>🍽️</Text>
+            <View style={styles.emptyStateModern}>
+              <View style={styles.emptyIconContainerModern}>
+                <LinearGradient
+                  colors={[colors.primary, colors.primaryDark]}
+                  style={styles.emptyIconGradient}
+                >
+                  <Text style={styles.emptyIconModern}>🍽️</Text>
+                </LinearGradient>
               </View>
-              <Text style={styles.emptyText}>No meals logged today</Text>
-              <Text style={styles.emptySubtext}>
-                Add meals from Home to start tracking
+              <Text style={styles.emptyTextModern}>No meals logged yet</Text>
+              <Text style={styles.emptySubtextModern}>
+                Head to Home and add your first meal
               </Text>
             </View>
           ) : (
             dailyLogs.map((log, index) => (
-              <View key={log.id} style={styles.mealCardAdvanced}>
-                {/* Meal Type Badge */}
-                <View style={styles.mealTypeBadge}>
-                  <Text style={styles.mealTypeBadgeText}>{log.meal_type.toUpperCase()}</Text>
-                </View>
-                
-                {/* Meal Content */}
-                <View style={styles.mealCardContent}>
-                  <View style={styles.mealCardLeft}>
-                    <View style={styles.mealEmojiContainer}>
-                      <Text style={styles.mealCardEmoji}>{log.emoji || getMealIcon(log.meal_type)}</Text>
+              <View key={log.id} style={styles.mealCardModern}>
+                {/* Card Header */}
+                <View style={styles.mealCardHeaderModern}>
+                  <View style={styles.mealCardHeaderLeft}>
+                    <LinearGradient
+                      colors={getMealGradient(log.meal_type)}
+                      style={styles.mealEmojiGradient}
+                    >
+                      <Text style={styles.mealCardEmojiModern}>{log.emoji || getMealIcon(log.meal_type)}</Text>
+                    </LinearGradient>
+                    <View style={styles.mealCardTitleArea}>
+                      <Text style={styles.mealCardNameModern} numberOfLines={1}>{log.food_name}</Text>
+                      <View style={styles.mealMetaRow}>
+                        <View style={styles.mealTypePill}>
+                          <Text style={styles.mealTypePillText}>{log.meal_type}</Text>
+                        </View>
+                        <Text style={styles.mealCardTimeModern}>{formatTime(log.created_at)}</Text>
+                      </View>
                     </View>
                   </View>
-                  
-                  <View style={styles.mealCardCenter}>
-                    <Text style={styles.mealCardName} numberOfLines={2}>{log.food_name}</Text>
-                    <Text style={styles.mealCardTime}>{formatTime(log.created_at)}</Text>
-                    
-                    {/* Nutrition Pills */}
-                    <View style={styles.nutritionPills}>
-                      <View style={[styles.nutritionPill, styles.caloriePill]}>
-                        <Text style={styles.nutritionPillText}>{log.nutrition_consumed?.calories || 0} cal</Text>
-                      </View>
-                      <View style={styles.nutritionPill}>
-                        <Text style={styles.nutritionPillText}>P {log.nutrition_consumed?.protein || 0}g</Text>
-                      </View>
-                      <View style={styles.nutritionPill}>
-                        <Text style={styles.nutritionPillText}>C {log.nutrition_consumed?.carbs || 0}g</Text>
-                      </View>
-                      <View style={[styles.nutritionPill, { backgroundColor: '#FDF2F8' }]}>
-                        <Text style={[styles.nutritionPillText, { color: colors.sugar }]}>S {log.nutrition_consumed?.sugar || Math.round((log.nutrition_consumed?.carbs || 0) * 0.15)}g</Text>
-                      </View>
-                    </View>
+                  <View style={styles.mealCalorieBadge}>
+                    <Text style={styles.mealCalorieValue}>{log.nutrition_consumed?.calories || 0}</Text>
+                    <Text style={styles.mealCalorieUnit}>kcal</Text>
+                  </View>
+                </View>
+                
+                {/* Nutrition Stats Row */}
+                <View style={styles.nutritionStatsRow}>
+                  <View style={[styles.nutritionStatItem, { backgroundColor: '#F5F3FF' }]}>
+                    <Text style={[styles.nutritionStatValue, { color: '#8B5CF6' }]}>{log.nutrition_consumed?.protein || 0}g</Text>
+                    <Text style={styles.nutritionStatLabel}>Protein</Text>
+                  </View>
+                  <View style={[styles.nutritionStatItem, { backgroundColor: '#FFFBEB' }]}>
+                    <Text style={[styles.nutritionStatValue, { color: '#F59E0B' }]}>{log.nutrition_consumed?.carbs || 0}g</Text>
+                    <Text style={styles.nutritionStatLabel}>Carbs</Text>
+                  </View>
+                  <View style={[styles.nutritionStatItem, { backgroundColor: '#FDF2F8' }]}>
+                    <Text style={[styles.nutritionStatValue, { color: '#EC4899' }]}>{log.nutrition_consumed?.fats || 0}g</Text>
+                    <Text style={styles.nutritionStatLabel}>Fats</Text>
+                  </View>
+                  <View style={[styles.nutritionStatItem, { backgroundColor: '#FEF2F2' }]}>
+                    <Text style={[styles.nutritionStatValue, { color: '#EF4444' }]}>{log.nutrition_consumed?.sugar || Math.round((log.nutrition_consumed?.carbs || 0) * 0.15)}g</Text>
+                    <Text style={styles.nutritionStatLabel}>Sugar</Text>
                   </View>
                 </View>
 
                 {/* Action Buttons */}
-                <View style={styles.mealCardActions}>
+                <View style={styles.mealActionsModern}>
                   <TouchableOpacity
-                    style={styles.alternativeBtnAdvanced}
+                    style={styles.altBtnModern}
                     onPress={() => handleShowVariations(log)}
                   >
-                    <Text style={styles.alternativeBtnIcon}>🔄</Text>
-                    <Text style={styles.alternativeBtnTextAdvanced}>Alternative</Text>
+                    <Text style={styles.altBtnIcon}>🔄</Text>
+                    <Text style={styles.altBtnText}>Alternative</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={styles.removeBtnAdvanced}
+                    style={styles.removeBtnModern}
                     onPress={() => handleRemoveMeal(log.id)}
                   >
-                    <Text style={styles.removeBtnIcon}>✕</Text>
-                    <Text style={styles.removeBtnTextAdvanced}>Remove</Text>
+                    <Text style={styles.removeBtnIconModern}>✕</Text>
+                    <Text style={styles.removeBtnTextModern}>Remove</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -679,12 +604,12 @@ const MealsTrackerScreen: React.FC<MealsTrackerScreenProps> = ({
           )}
         </View>
         
-        {/* ===== MARK DAY COMPLETE - PROFESSIONAL GREEN BUTTON ===== */}
+        {/* ===== MARK DAY COMPLETE - SIMPLIFIED ===== */}
         <View style={styles.markCompleteSection}>
           <TouchableOpacity
             style={[
               styles.markCompleteBtn,
-              (dailyLogs.length >= 3 && waterIntake >= waterTarget) && styles.markCompleteBtnReady,
+              dailyLogs.length >= 3 && styles.markCompleteBtnReady,
               isDayComplete && styles.markCompleteBtnDone
             ]}
             onPress={markDayComplete}
@@ -694,7 +619,7 @@ const MealsTrackerScreen: React.FC<MealsTrackerScreenProps> = ({
             {/* Gradient Background Effect */}
             <View style={[
               styles.markCompleteBtnBg,
-              (dailyLogs.length >= 3 && waterIntake >= waterTarget) && styles.markCompleteBtnBgReady,
+              dailyLogs.length >= 3 && styles.markCompleteBtnBgReady,
               isDayComplete && styles.markCompleteBtnBgDone
             ]} />
             
@@ -703,11 +628,11 @@ const MealsTrackerScreen: React.FC<MealsTrackerScreenProps> = ({
               {/* Icon Circle */}
               <View style={[
                 styles.markCompleteIcon,
-                (dailyLogs.length >= 3 && waterIntake >= waterTarget) && styles.markCompleteIconReady,
+                dailyLogs.length >= 3 && styles.markCompleteIconReady,
                 isDayComplete && styles.markCompleteIconDone
               ]}>
                 <Text style={styles.markCompleteEmoji}>
-                  {isDayComplete ? '🎉' : (dailyLogs.length >= 3 && waterIntake >= waterTarget) ? '✓' : '🎯'}
+                  {isDayComplete ? '🎉' : dailyLogs.length >= 3 ? '✓' : '🎯'}
                 </Text>
               </View>
               
@@ -715,7 +640,7 @@ const MealsTrackerScreen: React.FC<MealsTrackerScreenProps> = ({
               <View style={styles.markCompleteTextWrap}>
                 <Text style={[
                   styles.markCompleteTitle,
-                  (dailyLogs.length >= 3 && waterIntake >= waterTarget) && styles.markCompleteTitleReady,
+                  dailyLogs.length >= 3 && styles.markCompleteTitleReady,
                   isDayComplete && styles.markCompleteTitleDone
                 ]}>
                   {isDayComplete ? '🎊 Day Completed!' : 'Mark Day Complete'}
@@ -724,12 +649,7 @@ const MealsTrackerScreen: React.FC<MealsTrackerScreenProps> = ({
                   <View style={styles.markCompleteStats}>
                     <View style={styles.markCompleteStat}>
                       <Text style={styles.markCompleteStatIcon}>🍽️</Text>
-                      <Text style={styles.markCompleteStatText}>{dailyLogs.length}/3</Text>
-                    </View>
-                    <View style={styles.markCompleteStatDivider} />
-                    <View style={styles.markCompleteStat}>
-                      <Text style={styles.markCompleteStatIcon}>💧</Text>
-                      <Text style={styles.markCompleteStatText}>{waterIntake}/{waterTarget}</Text>
+                      <Text style={styles.markCompleteStatText}>{dailyLogs.length}/3 meals</Text>
                     </View>
                   </View>
                 )}
@@ -739,7 +659,7 @@ const MealsTrackerScreen: React.FC<MealsTrackerScreenProps> = ({
               {!isDayComplete && (
                 <View style={[
                   styles.markCompleteArrow,
-                  (dailyLogs.length >= 3 && waterIntake >= waterTarget) && styles.markCompleteArrowReady
+                  dailyLogs.length >= 3 && styles.markCompleteArrowReady
                 ]}>
                   <Text style={styles.markCompleteArrowText}>→</Text>
                 </View>
@@ -750,61 +670,24 @@ const MealsTrackerScreen: React.FC<MealsTrackerScreenProps> = ({
             {!isDayComplete && (
               <View style={styles.markCompleteProgress}>
                 <View style={[styles.markCompleteProgressFill, { 
-                  width: `${Math.min(((dailyLogs.length / 3) * 50) + ((waterIntake / waterTarget) * 50), 100)}%` 
+                  width: `${Math.min((dailyLogs.length / 3) * 100, 100)}%` 
                 }]} />
               </View>
             )}
           </TouchableOpacity>
         </View>
 
-        {/* ===== WEEKLY PROGRESS - PROFESSIONAL GREEN DESIGN ===== */}
-        <View style={styles.weeklySection}>
-          {/* Header */}
-          <View style={styles.weeklySectionHeader}>
-            <View>
-              <Text style={styles.weeklySectionTitle}>Weekly Progress</Text>
-              <Text style={styles.weeklySectionSubtitle}>Track your consistency</Text>
-            </View>
-            <View style={styles.weeklyStreakBadge}>
-              <Text style={styles.weeklyStreakFire}>🔥</Text>
-              <Text style={styles.weeklyStreakCount}>{user.streak || 0}</Text>
-              <Text style={styles.weeklyStreakLabel}>day streak</Text>
-            </View>
-          </View>
-          
-          {/* Days Grid */}
-          <View style={styles.weeklyDaysGrid}>
-            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => {
-              const dayNum = index === 6 ? 0 : index + 1;
-              const isToday = new Date().getDay() === dayNum;
-              const isComplete = weeklyData[index];
-              return (
-                <View key={index} style={styles.weeklyDayColumn}>
-                  <Text style={[
-                    styles.weeklyDayLabel,
-                    isToday && styles.weeklyDayLabelToday
-                  ]}>{day}</Text>
-                  <View style={[
-                    styles.weeklyDayCircle,
-                    isComplete && styles.weeklyDayCircleComplete,
-                    isToday && !isComplete && styles.weeklyDayCircleToday
-                  ]}>
-                    {isComplete ? (
-                      <Text style={styles.weeklyDayCheckmark}>✓</Text>
-                    ) : (
-                      <View style={styles.weekDayDot} />
-                    )}
-                  </View>
-                </View>
-              );
-            })}
-          </View>
-          <View style={styles.streakInfo}>
-            <Text style={styles.streakText}>
-              Current Streak: 🔥 {user.streak || 0} days
-            </Text>
-          </View>
+        {/* Streak Info */}
+        <View style={styles.streakInfoSection}>
+          <Text style={styles.streakText}>
+            Current Streak: 🔥 {user.streak || 0} days
+          </Text>
         </View>
+
+        {/* Weekly Progress Charts */}
+        <ProgressCharts userId={user.id} calorieTarget={calorieTarget} />
+
+        <View style={{ height: 40 }} />
       </ScrollView>
 
       {/* Recipe Variations Modal */}
@@ -883,13 +766,12 @@ const styles = StyleSheet.create({
     fontSize: 64,
   },
   loadingTitle: {
-    fontSize: typography.fontSize.xl,
-    fontWeight: typography.fontWeight.bold,
+    ...textStyles.h2,
     color: colors.textPrimary,
     marginTop: spacing.lg,
   },
   loadingSubtitle: {
-    fontSize: typography.fontSize.sm,
+    ...textStyles.bodySmall,
     color: colors.textSecondary,
     marginTop: spacing.xs,
   },
@@ -921,12 +803,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: typography.fontSize['2xl'],
-    fontWeight: typography.fontWeight.bold,
+    ...textStyles.h1,
     color: colors.textPrimary,
   },
   headerSubtitle: {
-    fontSize: typography.fontSize.sm,
+    ...textStyles.caption,
     color: colors.textSecondary,
     marginTop: 2,
   },
@@ -943,8 +824,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   streakCountHeader: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.bold,
+    ...textStyles.numberSmall,
     color: colors.primary,
   },
   
@@ -976,14 +856,186 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   dateText: {
-    fontSize: typography.fontSize.base,
+    ...textStyles.body,
     fontWeight: typography.fontWeight.semibold,
     color: colors.textPrimary,
   },
   dateDayName: {
-    fontSize: typography.fontSize.xs,
+    ...textStyles.caption,
     color: colors.textMuted,
     marginTop: 2,
+  },
+  
+  // Modern Date Selector Styles
+  dateSelectorModern: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  
+  // Simple Professional Date Row
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  dateBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: colors.primaryPale,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dateBtnText: {
+    fontSize: 22,
+    color: colors.primary,
+    fontWeight: '400',
+  },
+  dateInfo: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  dateMainText: {
+    ...textStyles.h4,
+    color: '#1F2937',
+  },
+  dateYearText: {
+    ...textStyles.caption,
+    color: colors.primary,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  
+  // Clean Date Container (legacy)
+  dateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+    gap: 20,
+  },
+  dateNavBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  dateNavIcon: {
+    fontSize: 24,
+    color: colors.primary,
+    fontWeight: '300',
+  },
+  dateCard: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  dateCardGradient: {
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    alignItems: 'center',
+  },
+  dateDayName: {
+    ...textStyles.overline,
+    color: 'rgba(255,255,255,0.85)',
+    marginBottom: 4,
+  },
+  dateDayNum: {
+    ...textStyles.displaySmall,
+    fontSize: 36,
+    color: '#FFFFFF',
+    lineHeight: 42,
+  },
+  dateMonthYr: {
+    ...textStyles.label,
+    color: 'rgba(255,255,255,0.9)',
+    marginTop: 2,
+  },
+  
+  dateArrowModern: {
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  dateArrowGradient: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dateArrowTextModern: {
+    fontSize: 28,
+    color: '#84C225',
+    fontWeight: '300',
+  },
+  dateCenterModern: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  dateMainRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  dateDayNumber: {
+    ...textStyles.displayMedium,
+    color: '#1F2937',
+    lineHeight: 48,
+  },
+  dateMonthYear: {
+    alignItems: 'flex-start',
+  },
+  dateMonthText: {
+    ...textStyles.h4,
+    color: '#1F2937',
+  },
+  dateYearText: {
+    ...textStyles.label,
+    color: '#6B7280',
+  },
+  dateDayBadge: {
+    backgroundColor: '#E8F5D9',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginTop: 8,
+  },
+  dateDayBadgeText: {
+    ...textStyles.label,
+    color: '#84C225',
   },
   
   // Progress Cards
@@ -1001,6 +1053,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     ...shadows.card,
   },
+  progressCardFull: {
+    maxWidth: '100%',
+  },
   progressCardIcon: {
     marginBottom: spacing.xs,
   },
@@ -1008,12 +1063,12 @@ const styles = StyleSheet.create({
     fontSize: 24,
   },
   progressCardValue: {
-    fontSize: typography.fontSize.xl,
-    fontWeight: typography.fontWeight.bold,
+    ...textStyles.number,
+    fontSize: 19,
     color: colors.textPrimary,
   },
   progressCardLabel: {
-    fontSize: typography.fontSize.xs,
+    ...textStyles.caption,
     color: colors.textMuted,
   },
   miniProgressBar: {
@@ -1043,13 +1098,13 @@ const styles = StyleSheet.create({
     ...shadows.card,
   },
   sectionTitle: {
-    fontSize: typography.fontSize.base,
+    ...textStyles.body,
     fontWeight: typography.fontWeight.semibold,
     color: colors.textPrimary,
     marginBottom: spacing.sm,
   },
   waterRecommendation: {
-    fontSize: typography.fontSize.xs,
+    ...textStyles.caption,
     color: colors.info,
     marginBottom: spacing.sm,
   },
@@ -1100,12 +1155,11 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   waterCount: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.semibold,
+    ...textStyles.numberSmall,
     color: colors.textPrimary,
   },
   
-  // Macros Section
+  // Macros Section - Modern Professional Design
   macrosSection: {
     backgroundColor: '#FFFFFF',
     marginHorizontal: spacing.lg,
@@ -1115,11 +1169,365 @@ const styles = StyleSheet.create({
     ...shadows.card,
   },
   
+  // Nutrition Section - Professional Design
+  nutritionSection: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: spacing.lg,
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: spacing.md,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 24,
+    elevation: 8,
+  },
+  nutritionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  nutritionHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  nutritionIconWrapper: {
+    marginRight: 12,
+  },
+  nutritionIconGradient: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  nutritionTitle: {
+    ...textStyles.h4,
+    color: '#1F2937',
+  },
+  nutritionSubtitle: {
+    ...textStyles.caption,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  caloriesBadge: {
+    backgroundColor: NUTRITION_COLORS.calories.bg,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 14,
+    alignItems: 'center',
+  },
+  caloriesBadgeValue: {
+    ...textStyles.number,
+    fontSize: 20,
+    color: NUTRITION_COLORS.calories.primary,
+  },
+  caloriesBadgeLabel: {
+    ...textStyles.labelSmall,
+    color: NUTRITION_COLORS.calories.primary,
+    opacity: 0.8,
+  },
+  macroCardsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  macroCard: {
+    width: (SCREEN_WIDTH - 76) / 2,
+    padding: 16,
+    borderRadius: 16,
+  },
+  macroCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  macroIconBg: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  macroCardValue: {
+    ...textStyles.number,
+    fontSize: 20,
+  },
+  macroCardLabel: {
+    ...textStyles.label,
+    color: '#374151',
+    marginBottom: 10,
+  },
+  macroProgressBg: {
+    height: 6,
+    backgroundColor: 'rgba(0,0,0,0.08)',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  macroProgressFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  
   // Meals Section
   mealsSection: {
     marginHorizontal: spacing.lg,
     marginBottom: spacing.md,
   },
+  
+  // Modern Meals Section Styles
+  mealsSectionModern: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  mealsSectionHeaderModern: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  mealsTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  mealsIconWrapper: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: colors.primaryPale,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mealsIcon: {
+    fontSize: 22,
+  },
+  mealsTitleModern: {
+    ...textStyles.h4,
+    color: '#1F2937',
+  },
+  mealsSubtitle: {
+    ...textStyles.caption,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  mealsBadgeModern: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    backgroundColor: colors.primaryPale,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  mealsBadgeNumber: {
+    ...textStyles.number,
+    fontSize: 20,
+    color: colors.primary,
+  },
+  mealsBadgeDivider: {
+    fontSize: 16,
+    color: '#94A3B8',
+    marginHorizontal: 2,
+  },
+  mealsBadgeTotal: {
+    ...textStyles.numberSmall,
+    fontSize: 16,
+    color: '#94A3B8',
+  },
+  
+  // Modern Empty State
+  emptyStateModern: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 40,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  emptyIconContainerModern: {
+    marginBottom: 16,
+  },
+  emptyIconGradient: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyIconModern: {
+    fontSize: 36,
+  },
+  emptyTextModern: {
+    ...textStyles.h4,
+    color: '#1F2937',
+    marginBottom: 8,
+  },
+  emptySubtextModern: {
+    ...textStyles.bodySmall,
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  
+  // Modern Meal Card Styles
+  mealCardModern: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 5,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.primary,
+  },
+  mealCardHeaderModern: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 14,
+  },
+  mealCardHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 12,
+  },
+  mealEmojiGradient: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mealCardEmojiModern: {
+    fontSize: 26,
+  },
+  mealCardTitleArea: {
+    flex: 1,
+  },
+  mealCardNameModern: {
+    ...textStyles.body,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 6,
+  },
+  mealMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  mealTypePill: {
+    backgroundColor: colors.primaryPale,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  mealTypePillText: {
+    ...textStyles.labelSmall,
+    color: colors.primary,
+    textTransform: 'capitalize',
+  },
+  mealCardTimeModern: {
+    ...textStyles.caption,
+    color: '#6B7280',
+  },
+  mealCalorieBadge: {
+    backgroundColor: colors.primaryPale,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  mealCalorieValue: {
+    ...textStyles.number,
+    fontSize: 18,
+    color: colors.primary,
+  },
+  mealCalorieUnit: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.primary,
+    opacity: 0.8,
+  },
+  
+  // Nutrition Stats Row
+  nutritionStatsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 14,
+  },
+  nutritionStatItem: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  nutritionStatValue: {
+    ...textStyles.numberSmall,
+    fontSize: 14,
+  },
+  nutritionStatLabel: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  
+  // Modern Action Buttons
+  mealActionsModern: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+  altBtnModern: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primaryPale,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 6,
+  },
+  altBtnIcon: {
+    fontSize: 14,
+  },
+  altBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  removeBtnModern: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FEF2F2',
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 6,
+  },
+  removeBtnIconModern: {
+    fontSize: 14,
+    color: '#EF4444',
+    fontWeight: '600',
+  },
+  removeBtnTextModern: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#EF4444',
+  },
+  
   emptyIcon: {
     fontSize: 48,
     marginBottom: spacing.sm,
@@ -1395,6 +1803,14 @@ const styles = StyleSheet.create({
     paddingTop: spacing.sm,
     borderTopWidth: 1,
     borderTopColor: colors.borderLight,
+  },
+  streakInfoSection: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.xl,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+    backgroundColor: '#FFF7ED',
+    borderRadius: borderRadius.xl,
   },
   streakText: {
     fontSize: typography.fontSize.base,

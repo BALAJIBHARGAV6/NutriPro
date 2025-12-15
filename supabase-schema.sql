@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
   activity_level TEXT CHECK (activity_level IN ('sedentary', 'light', 'moderate', 'active', 'very_active')),
   goal TEXT CHECK (goal IN ('maintain', 'lose', 'gain')),
   target_weight DECIMAL,
+  avatar_type INTEGER DEFAULT 1, -- Stores selected avatar type (1-12)
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   UNIQUE(user_id)

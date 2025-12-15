@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/types';
+import { textStyles, colors } from '../../constants/theme';
 
 type NavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Welcome'>;
 
@@ -75,13 +76,12 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   title: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#2E7D32',
+    ...textStyles.displaySmall,
+    color: colors.primary,
     marginBottom: 8,
   },
   subtitle: {
-    fontSize: 16,
+    ...textStyles.body,
     color: '#757575',
     textAlign: 'center',
     paddingHorizontal: 24,
@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 24,
-    backgroundColor: '#F1F8E9',
+    backgroundColor: colors.primaryPale,
     padding: 16,
     borderRadius: 12,
   },
@@ -105,32 +105,31 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   featureTitle: {
-    fontSize: 16,
+    ...textStyles.body,
     fontWeight: '600',
-    color: '#1B5E20',
+    color: colors.primaryDark,
     marginBottom: 2,
   },
   featureDesc: {
-    fontSize: 14,
+    ...textStyles.bodySmall,
     color: '#757575',
   },
   footer: {
     marginBottom: 16,
   },
   button: {
-    backgroundColor: '#2E7D32',
+    backgroundColor: colors.primary,
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 12,
     alignItems: 'center',
   },
   buttonText: {
+    ...textStyles.buttonLarge,
     color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '600',
   },
   terms: {
-    fontSize: 12,
+    ...textStyles.caption,
     color: '#9E9E9E',
     textAlign: 'center',
     marginTop: 16,

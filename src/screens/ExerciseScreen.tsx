@@ -15,7 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Speech from 'expo-speech';
 import { User } from '../types';
-import { colors, shadows, spacing, borderRadius, typography } from '../constants/theme';
+import { colors, shadows, spacing, borderRadius, typography, textStyles } from '../constants/theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -573,12 +573,16 @@ const ExerciseScreen: React.FC<ExerciseScreenProps> = ({ user }) => {
       transparent={false}
     >
       <View style={styles.timerModalContainer}>
-        <View style={styles.timerModalContent}>
-          {/* Header */}
-          <TouchableOpacity style={styles.timerCloseBtn} onPress={stopTimer}>
-            <Text style={styles.timerCloseBtnText}>✕</Text>
-          </TouchableOpacity>
-          
+        {/* Header */}
+        <TouchableOpacity style={styles.timerCloseBtn} onPress={stopTimer}>
+          <Text style={styles.timerCloseBtnText}>✕</Text>
+        </TouchableOpacity>
+        
+        <ScrollView 
+          style={styles.timerModalScrollView}
+          contentContainerStyle={styles.timerModalContent}
+          showsVerticalScrollIndicator={false}
+        >
           {/* Exercise Info */}
           <View style={styles.timerExerciseInfo}>
             <Text style={styles.timerExerciseEmoji}>{activeExercise?.emoji || '🏋️'}</Text>
@@ -647,7 +651,9 @@ const ExerciseScreen: React.FC<ExerciseScreenProps> = ({ user }) => {
               • Stop if you feel pain
             </Text>
           </View>
-        </View>
+          
+          <View style={{ height: 40 }} />
+        </ScrollView>
       </View>
     </Modal>
   );
@@ -949,13 +955,12 @@ const styles = StyleSheet.create({
     fontSize: 40,
   },
   loadingTitle: {
-    fontSize: typography.fontSize.xl,
-    fontWeight: typography.fontWeight.bold,
+    ...textStyles.h2,
     color: colors.textPrimary,
     marginTop: spacing.lg,
   },
   loadingSubtitle: {
-    fontSize: typography.fontSize.sm,
+    ...textStyles.bodySmall,
     color: colors.textSecondary,
     marginTop: spacing.xs,
     textAlign: 'center',
@@ -986,7 +991,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   loadingFoodLabel: {
-    fontSize: typography.fontSize.xs,
+    ...textStyles.caption,
     color: colors.textMuted,
   },
   loadingBadge: {
@@ -997,9 +1002,8 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
   },
   loadingBadgeText: {
-    fontSize: typography.fontSize.sm,
+    ...textStyles.label,
     color: colors.primary,
-    fontWeight: typography.fontWeight.medium,
   },
 
   // Header
@@ -1017,12 +1021,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: typography.fontSize['2xl'],
-    fontWeight: typography.fontWeight.bold,
+    ...textStyles.h1,
     color: '#FFFFFF',
   },
   headerSubtitle: {
-    fontSize: typography.fontSize.sm,
+    ...textStyles.bodySmall,
     color: 'rgba(255,255,255,0.8)',
     marginTop: 2,
   },
@@ -1039,9 +1042,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   headerBadgeText: {
-    fontSize: typography.fontSize.sm,
+    ...textStyles.label,
     color: '#FFFFFF',
-    fontWeight: typography.fontWeight.medium,
   },
 
   // Stats
@@ -1064,12 +1066,12 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   statValue: {
-    fontSize: typography.fontSize.xl,
-    fontWeight: typography.fontWeight.bold,
+    ...textStyles.number,
+    fontSize: 19,
     color: colors.textPrimary,
   },
   statLabel: {
-    fontSize: typography.fontSize.xs,
+    ...textStyles.caption,
     color: colors.textMuted,
     marginTop: 2,
   },
@@ -1080,23 +1082,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   sectionTitle: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.semibold,
+    ...textStyles.h4,
     color: colors.textPrimary,
     marginBottom: spacing.md,
   },
   categoryScroll: {
     marginLeft: -spacing.xs,
+    paddingRight: spacing.lg,
   },
   categoryChip: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md + 4,
+    paddingVertical: spacing.sm + 2,
     borderRadius: borderRadius.full,
-    marginRight: spacing.sm,
-    gap: spacing.xs,
+    marginRight: spacing.md,
+    marginBottom: spacing.xs,
+    gap: spacing.sm,
     ...shadows.soft,
   },
   categoryChipActive: {
@@ -1106,8 +1109,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   categoryText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.medium,
+    ...textStyles.label,
     color: colors.textSecondary,
   },
   categoryTextActive: {
@@ -1147,12 +1149,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   exerciseName: {
-    fontSize: typography.fontSize.base,
+    ...textStyles.body,
     fontWeight: typography.fontWeight.semibold,
     color: colors.textPrimary,
   },
   exerciseDescription: {
-    fontSize: typography.fontSize.sm,
+    ...textStyles.bodySmall,
     color: colors.textSecondary,
     marginTop: 2,
   },
@@ -1171,7 +1173,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   metaText: {
-    fontSize: typography.fontSize.xs,
+    ...textStyles.caption,
     color: colors.textMuted,
   },
   difficultyBadge: {
@@ -1180,8 +1182,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
   },
   difficultyText: {
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.medium,
+    ...textStyles.labelSmall,
   },
   expandIcon: {
     fontSize: 12,
@@ -1200,8 +1201,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   instructionsTitle: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.semibold,
+    ...textStyles.label,
     color: colors.textPrimary,
     marginBottom: spacing.sm,
   },
@@ -1330,16 +1330,18 @@ const styles = StyleSheet.create({
   timerModalContainer: {
     flex: 1,
     backgroundColor: colors.primary,
-    paddingTop: 50,
+  },
+  timerModalScrollView: {
+    flex: 1,
   },
   timerModalContent: {
-    flex: 1,
     padding: spacing.lg,
+    paddingTop: 60,
     alignItems: 'center',
   },
   timerCloseBtn: {
     position: 'absolute',
-    top: spacing.lg,
+    top: 50,
     right: spacing.lg,
     width: 40,
     height: 40,

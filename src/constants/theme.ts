@@ -87,39 +87,62 @@ export const borderRadius = {
 };
 
 export const typography = {
-  // Font Families
+  // Font Families - Uses system fonts (SF Pro on iOS, Roboto on Android)
   fontFamily: {
     primary: 'System',
     heading: 'System',
     numbers: 'System',
   },
   
-  // Font Sizes
+  // Modern Font Sizes - Based on Apple/Google HIG
   fontSize: {
-    xs: 12,
-    sm: 14,
-    base: 16,
-    lg: 18,
-    xl: 20,
-    '2xl': 24,
-    '3xl': 32,
-    '4xl': 40,
+    // Micro text (labels, badges)
+    micro: 10,
+    xs: 11,
+    // Body text
+    sm: 13,
+    base: 15,
+    md: 16,
+    // Subheadings
+    lg: 17,
+    xl: 19,
+    // Headings
+    '2xl': 22,
+    '3xl': 26,
+    '4xl': 32,
+    // Display/Hero
+    '5xl': 40,
+    '6xl': 48,
   },
   
-  // Font Weights
+  // Font Weights - Optimized for readability
   fontWeight: {
     light: '300' as '300',
     regular: '400' as '400',
     medium: '500' as '500',
     semibold: '600' as '600',
     bold: '700' as '700',
+    extrabold: '800' as '800',
   },
   
-  // Line Heights
+  // Line Heights - Modern spacing
   lineHeight: {
-    tight: 1.2,
-    normal: 1.5,
-    relaxed: 1.75,
+    none: 1,
+    tight: 1.15,
+    snug: 1.25,
+    normal: 1.4,
+    relaxed: 1.6,
+    loose: 1.8,
+  },
+  
+  // Letter Spacing
+  letterSpacing: {
+    tighter: -0.8,
+    tight: -0.4,
+    normal: 0,
+    wide: 0.4,
+    wider: 0.8,
+    widest: 1.6,
   },
 };
 
@@ -294,6 +317,155 @@ export const componentStyles = {
   },
 };
 
+// Professional Text Styles - Used by top apps (Airbnb, Uber, Apple)
+export const textStyles = {
+  // Display - Large hero text
+  displayLarge: {
+    fontSize: 48,
+    fontWeight: '800' as '800',
+    lineHeight: 52,
+    letterSpacing: -1,
+  },
+  displayMedium: {
+    fontSize: 40,
+    fontWeight: '700' as '700',
+    lineHeight: 44,
+    letterSpacing: -0.8,
+  },
+  displaySmall: {
+    fontSize: 32,
+    fontWeight: '700' as '700',
+    lineHeight: 38,
+    letterSpacing: -0.5,
+  },
+  
+  // Headings
+  h1: {
+    fontSize: 26,
+    fontWeight: '700' as '700',
+    lineHeight: 32,
+    letterSpacing: -0.3,
+    color: colors.textPrimary,
+  },
+  h2: {
+    fontSize: 22,
+    fontWeight: '700' as '700',
+    lineHeight: 28,
+    letterSpacing: -0.2,
+    color: colors.textPrimary,
+  },
+  h3: {
+    fontSize: 19,
+    fontWeight: '600' as '600',
+    lineHeight: 24,
+    letterSpacing: 0,
+    color: colors.textPrimary,
+  },
+  h4: {
+    fontSize: 17,
+    fontWeight: '600' as '600',
+    lineHeight: 22,
+    letterSpacing: 0,
+    color: colors.textPrimary,
+  },
+  
+  // Body text
+  bodyLarge: {
+    fontSize: 17,
+    fontWeight: '400' as '400',
+    lineHeight: 24,
+    letterSpacing: 0,
+    color: colors.textPrimary,
+  },
+  body: {
+    fontSize: 15,
+    fontWeight: '400' as '400',
+    lineHeight: 22,
+    letterSpacing: 0,
+    color: colors.textPrimary,
+  },
+  bodySmall: {
+    fontSize: 13,
+    fontWeight: '400' as '400',
+    lineHeight: 18,
+    letterSpacing: 0,
+    color: colors.textSecondary,
+  },
+  
+  // Labels & Captions
+  label: {
+    fontSize: 13,
+    fontWeight: '500' as '500',
+    lineHeight: 18,
+    letterSpacing: 0.2,
+    color: colors.textSecondary,
+  },
+  labelSmall: {
+    fontSize: 11,
+    fontWeight: '500' as '500',
+    lineHeight: 14,
+    letterSpacing: 0.3,
+    color: colors.textMuted,
+  },
+  caption: {
+    fontSize: 12,
+    fontWeight: '400' as '400',
+    lineHeight: 16,
+    letterSpacing: 0.2,
+    color: colors.textMuted,
+  },
+  
+  // Buttons
+  buttonLarge: {
+    fontSize: 17,
+    fontWeight: '600' as '600',
+    lineHeight: 22,
+    letterSpacing: 0,
+  },
+  button: {
+    fontSize: 15,
+    fontWeight: '600' as '600',
+    lineHeight: 20,
+    letterSpacing: 0,
+  },
+  buttonSmall: {
+    fontSize: 13,
+    fontWeight: '600' as '600',
+    lineHeight: 18,
+    letterSpacing: 0,
+  },
+  
+  // Numbers (for stats, prices, etc.)
+  numberLarge: {
+    fontSize: 32,
+    fontWeight: '800' as '800',
+    lineHeight: 38,
+    letterSpacing: -0.5,
+  },
+  number: {
+    fontSize: 22,
+    fontWeight: '700' as '700',
+    lineHeight: 28,
+    letterSpacing: -0.3,
+  },
+  numberSmall: {
+    fontSize: 17,
+    fontWeight: '600' as '600',
+    lineHeight: 22,
+    letterSpacing: 0,
+  },
+  
+  // Overline (small uppercase labels)
+  overline: {
+    fontSize: 11,
+    fontWeight: '600' as '600',
+    lineHeight: 14,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase' as 'uppercase',
+    color: colors.textMuted,
+  },
+};
+
 // Layout constants
 export const layout = {
   screenPadding: spacing.md,
@@ -324,6 +496,7 @@ export const theme = {
   spacing,
   borderRadius,
   typography,
+  textStyles,
   shadows,
   animation,
   componentStyles,

@@ -319,8 +319,6 @@ export default function App() {
       <SafeAreaProvider>
         <AuthScreen 
           onAuth={handleAuth}
-          onGoogleAuth={handleGoogleAuth}
-          onDemoMode={() => handleAuth('demo@nutripro.com', 'demo123456', 'signin')}
           authLoading={authLoading}
         />
       </SafeAreaProvider>

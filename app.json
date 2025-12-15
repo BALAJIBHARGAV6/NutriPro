@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "windsurf-project",
-    "slug": "windsurf-project",
+    "name": "NutriPro",
+    "slug": "nutripro-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -10,21 +10,31 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#84C225"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.nutripro.app"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#84C225"
       },
+      "package": "com.nutripro.app",
+      "versionCode": 1,
+      "permissions": [],
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "ffaaddb4-8d10-4f34-96ed-3b8a9e4da147"
+      }
+    },
+    "owner": "nutripro37"
   }
 }
