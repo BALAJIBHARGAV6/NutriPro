@@ -114,6 +114,7 @@ export interface Meal {
   carbs: number;
   fats: number;
   fiber: number;
+  sugar: number;
   ingredients: string[];
   instructions: string[];
   prepTime: number;
@@ -201,7 +202,7 @@ class ProfessionalAIService {
     return `Create a ${mealType} recipe. Goal: ${profile.goal}. Calories: ~${targetCalories}. Avoid: ${avoid}.${additionalPrefs ? ` Prefer: ${additionalPrefs}` : ''}
 
 Return ONLY this JSON:
-{"name":"Recipe Name","description":"Short description","calories":${targetCalories},"protein":${Math.round(targetCalories * 0.25 / 4)},"carbs":${Math.round(targetCalories * 0.45 / 4)},"fats":${Math.round(targetCalories * 0.30 / 9)},"fiber":5,"ingredients":["ingredient 1","ingredient 2"],"instructions":["Step 1","Step 2"],"prepTime":15,"cookTime":20,"tags":["healthy"],"imageEmoji":"🍽️"}`;
+{"name":"Recipe Name","description":"Short description","calories":${targetCalories},"protein":${Math.round(targetCalories * 0.25 / 4)},"carbs":${Math.round(targetCalories * 0.45 / 4)},"fats":${Math.round(targetCalories * 0.30 / 9)},"fiber":5,"sugar":${Math.round(targetCalories * 0.05 / 4)},"ingredients":["ingredient 1","ingredient 2"],"instructions":["Step 1","Step 2"],"prepTime":15,"cookTime":20,"tags":["healthy"],"imageEmoji":"🍽️"}`;
   }
 
   private getTargetCalories(mealType: string, profile: UserProfile): number {
@@ -250,6 +251,7 @@ Return ONLY this JSON:
         id: `meal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         mealType: mealType as any,
         fiber: meal.fiber || 5,
+        sugar: meal.sugar || 0,
         prepTime: meal.prepTime || 10,
         cookTime: meal.cookTime || 15,
       tags: meal.tags || ['healthy'],

@@ -40,6 +40,7 @@ const MealsTrackerScreen: React.FC<MealsTrackerScreenProps> = ({
     protein: 0,
     carbs: 0,
     fats: 0,
+    sugar: 0,
     mealsCount: 0,
   });
   const [weeklyData, setWeeklyData] = useState<boolean[]>([]);
@@ -252,15 +253,18 @@ const MealsTrackerScreen: React.FC<MealsTrackerScreenProps> = ({
       protein: 0,
       carbs: 0,
       fats: 0,
+      sugar: 0,
       mealsCount: uniqueLogs.length,
     };
     
     uniqueLogs.forEach(log => {
       if (log.nutrition_consumed) {
+        const carbs = log.nutrition_consumed.carbs || 0;
         totals.calories += log.nutrition_consumed.calories || 0;
         totals.protein += log.nutrition_consumed.protein || 0;
-        totals.carbs += log.nutrition_consumed.carbs || 0;
+        totals.carbs += carbs;
         totals.fats += log.nutrition_consumed.fats || 0;
+        totals.sugar += log.nutrition_consumed.sugar || Math.round(carbs * 0.15);
       }
     });
     
@@ -588,6 +592,11 @@ const MealsTrackerScreen: React.FC<MealsTrackerScreenProps> = ({
               <Text style={styles.macroLabel}>Fats</Text>
               <Text style={styles.macroValue}>{dailyTotals.fats}g</Text>
             </View>
+            <View style={styles.macroItem}>
+              <View style={[styles.macroDot, { backgroundColor: colors.sugar }]} />
+              <Text style={styles.macroLabel}>Sugar</Text>
+              <Text style={styles.macroValue}>{dailyTotals.sugar}g</Text>
+            </View>
           </View>
         </View>
 
@@ -640,6 +649,9 @@ const MealsTrackerScreen: React.FC<MealsTrackerScreenProps> = ({
                       </View>
                       <View style={styles.nutritionPill}>
                         <Text style={styles.nutritionPillText}>C {log.nutrition_consumed?.carbs || 0}g</Text>
+                      </View>
+                      <View style={[styles.nutritionPill, { backgroundColor: '#FDF2F8' }]}>
+                        <Text style={[styles.nutritionPillText, { color: colors.sugar }]}>S {log.nutrition_consumed?.sugar || Math.round((log.nutrition_consumed?.carbs || 0) * 0.15)}g</Text>
                       </View>
                     </View>
                   </View>
@@ -830,7 +842,7 @@ const MealsTrackerScreen: React.FC<MealsTrackerScreenProps> = ({
                       <Text style={styles.variationName}>{variation.name}</Text>
                       <Text style={styles.variationDesc}>{variation.description}</Text>
                       <Text style={styles.variationMacros}>
-                        {variation.calories} cal | P: {variation.protein}g | C: {variation.carbs}g | F: {variation.fats}g
+                        {variation.calories} cal | P: {variation.protein}g | C: {variation.carbs}g | F: {variation.fats}g | S: {variation.sugar || Math.round(variation.carbs * 0.15)}g
                       </Text>
                     </View>
                   </View>

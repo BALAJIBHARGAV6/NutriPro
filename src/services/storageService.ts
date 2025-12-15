@@ -293,18 +293,24 @@ class StorageService {
     protein: number;
     carbs: number;
     fats: number;
+    sugar: number;
     mealsCount: number;
   }> {
     const logs = await this.getDailyLogs(userId, date);
     return logs.reduce(
-      (acc, log) => ({
-        calories: acc.calories + (log.nutrition_consumed?.calories || 0),
-        protein: acc.protein + (log.nutrition_consumed?.protein || 0),
-        carbs: acc.carbs + (log.nutrition_consumed?.carbs || 0),
-        fats: acc.fats + (log.nutrition_consumed?.fats || 0),
-        mealsCount: acc.mealsCount + 1,
-      }),
-      { calories: 0, protein: 0, carbs: 0, fats: 0, mealsCount: 0 }
+      (acc, log) => {
+        const carbs = log.nutrition_consumed?.carbs || 0;
+        return {
+          calories: acc.calories + (log.nutrition_consumed?.calories || 0),
+          protein: acc.protein + (log.nutrition_consumed?.protein || 0),
+          carbs: acc.carbs + carbs,
+          fats: acc.fats + (log.nutrition_consumed?.fats || 0),
+          // Estimate sugar as ~15% of carbs if not tracked
+          sugar: acc.sugar + (log.nutrition_consumed?.sugar || Math.round(carbs * 0.15)),
+          mealsCount: acc.mealsCount + 1,
+        };
+      },
+      { calories: 0, protein: 0, carbs: 0, fats: 0, sugar: 0, mealsCount: 0 }
     );
   }
 

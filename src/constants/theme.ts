@@ -40,6 +40,7 @@ export const colors = {
   carbs: '#3B82F6',
   fats: '#F59E0B',
   fiber: '#14B8A6',
+  sugar: '#EC4899',
   water: '#06B6D4',
   
   // Borders

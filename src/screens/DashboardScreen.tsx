@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   Dimensions,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { User } from '../types';
@@ -45,6 +46,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
     protein: 0,
     carbs: 0,
     fats: 0,
+    sugar: 0,
   });
 
   const calorieTarget = calculateCalorieTarget();
@@ -174,13 +176,16 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
     }
     
     // Calculate totals from logs
-    const totals = { calories: 0, protein: 0, carbs: 0, fats: 0 };
+    const totals = { calories: 0, protein: 0, carbs: 0, fats: 0, sugar: 0 };
     logs.forEach(log => {
       if (log.nutrition_consumed) {
+        const carbs = log.nutrition_consumed.carbs || 0;
         totals.calories += log.nutrition_consumed.calories || 0;
         totals.protein += log.nutrition_consumed.protein || 0;
-        totals.carbs += log.nutrition_consumed.carbs || 0;
+        totals.carbs += carbs;
         totals.fats += log.nutrition_consumed.fats || 0;
+        // If sugar not tracked, estimate as ~15% of carbs
+        totals.sugar += log.nutrition_consumed.sugar || Math.round(carbs * 0.15);
       }
     });
     setDailyTotals(totals);
@@ -283,6 +288,11 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
               <Text style={styles.macroValue}>{meal.fats}g</Text>
               <Text style={styles.macroLabel}>Fats</Text>
             </View>
+            <View style={styles.macroDivider} />
+            <View style={styles.macroItem}>
+              <Text style={[styles.macroValue, { color: colors.sugar }]}>{meal.sugar || Math.round(meal.carbs * 0.15)}g</Text>
+              <Text style={styles.macroLabel}>Sugar</Text>
+            </View>
           </View>
         </View>
         
@@ -336,7 +346,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
           <View style={styles.mealInfo}>
             <Text style={styles.mealName} numberOfLines={2} ellipsizeMode="tail">{meal.name}</Text>
             <Text style={styles.mealMacros} numberOfLines={1}>
-              {meal.calories} cal | P: {meal.protein}g | C: {meal.carbs}g | F: {meal.fats}g
+              {meal.calories} cal | P: {meal.protein}g | C: {meal.carbs}g | F: {meal.fats}g | S: {meal.sugar || Math.round(meal.carbs * 0.15)}g
             </Text>
           </View>
         </View>
@@ -385,18 +395,42 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
     );
   };
 
-  // Macro Progress Bar
-  const MacroBar = ({ label, value, max, color }: { label: string; value: number; max: number; color: string }) => (
-    <View style={styles.macroBarContainer}>
-      <View style={styles.macroBarHeader}>
-        <Text style={styles.macroBarLabel}>{label}</Text>
-        <Text style={styles.macroBarValue}>{value}g</Text>
+  // Animated Macro Progress Bar for smooth transitions
+  const MacroBar = ({ label, value, max, color }: { label: string; value: number; max: number; color: string }) => {
+    const animatedWidth = useRef(new Animated.Value(0)).current;
+    
+    useEffect(() => {
+      Animated.spring(animatedWidth, {
+        toValue: Math.min((value / max) * 100, 100),
+        useNativeDriver: false,
+        tension: 40,
+        friction: 8,
+      }).start();
+    }, [value, max]);
+    
+    return (
+      <View style={styles.macroBarContainer}>
+        <View style={styles.macroBarHeader}>
+          <Text style={styles.macroBarLabel}>{label}</Text>
+          <Text style={styles.macroBarValue}>{Math.round(value)}g</Text>
+        </View>
+        <View style={styles.macroBarTrack}>
+          <Animated.View 
+            style={[
+              styles.macroBarFill, 
+              { 
+                width: animatedWidth.interpolate({
+                  inputRange: [0, 100],
+                  outputRange: ['0%', '100%'],
+                }),
+                backgroundColor: color 
+              }
+            ]} 
+          />
+        </View>
       </View>
-      <View style={styles.macroBarTrack}>
-        <View style={[styles.macroBarFill, { width: `${Math.min((value / max) * 100, 100)}%`, backgroundColor: color }]} />
-      </View>
-    </View>
-  );
+    );
+  };
 
   if (loading) {
     return (
@@ -461,6 +495,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
               <MacroBar label="Protein" value={dailyTotals.protein} max={Math.round(calorieTarget * 0.25 / 4)} color={colors.protein} />
               <MacroBar label="Carbs" value={dailyTotals.carbs} max={Math.round(calorieTarget * 0.45 / 4)} color={colors.carbs} />
               <MacroBar label="Fats" value={dailyTotals.fats} max={Math.round(calorieTarget * 0.30 / 9)} color={colors.fats} />
+              <MacroBar label="Sugar" value={dailyTotals.sugar} max={25} color={colors.sugar} />
             </View>
           </View>
         </View>

@@ -348,6 +348,7 @@ const RecipesListScreen: React.FC<RecipesListScreenProps> = ({
                 <Text style={styles.nutritionItem}>Protein: {selectedRecipe.protein}g</Text>
                 <Text style={styles.nutritionItem}>Carbs: {selectedRecipe.carbs}g</Text>
                 <Text style={styles.nutritionItem}>Fats: {selectedRecipe.fats}g</Text>
+                <Text style={[styles.nutritionItem, { color: colors.sugar }]}>Sugar: {selectedRecipe.sugar || Math.round(selectedRecipe.carbs * 0.15)}g</Text>
               </View>
             </View>
 
