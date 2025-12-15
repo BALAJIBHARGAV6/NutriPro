@@ -1,7 +1,9 @@
 // Professional AI Service for NutriPlan - Real API Integration
 // Using Groq AI for meal generation with smart rate limiting and retry
+import Constants from 'expo-constants';
 
-const GROQ_API_KEY = process.env.EXPO_PUBLIC_GROQ_API_KEY || '';
+const GROQ_API_KEY = process.env.EXPO_PUBLIC_GROQ_API_KEY || 
+                     Constants.expoConfig?.extra?.groqApiKey || '';
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 // Rate limiting state - increased delays for free tier

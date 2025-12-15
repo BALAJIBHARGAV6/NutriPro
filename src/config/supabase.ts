@@ -2,11 +2,14 @@ import 'react-native-url-polyfill/auto';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 
 // Supabase configuration
-// Replace these with your actual Supabase project credentials
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+// Try environment variables first (dev), then fallback to EAS secrets (production)
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || 
+                     Constants.expoConfig?.extra?.supabaseUrl || '';
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 
+                          Constants.expoConfig?.extra?.supabaseAnonKey || '';
 
 // Check if Supabase is configured
 export const isSupabaseConfigured = SUPABASE_URL.startsWith('http') && SUPABASE_ANON_KEY.length > 0;
