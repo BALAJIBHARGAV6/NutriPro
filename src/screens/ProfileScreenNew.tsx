@@ -344,7 +344,7 @@ const ProfileScreenNew: React.FC<ProfileScreenProps> = ({
             </View>
           </TouchableOpacity>
           <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>{user.fullName || 'User'}</Text>
+            <Text style={styles.profileName}>{user.fullName || user.name || user.email?.split('@')[0] || 'User'}</Text>
             <Text style={styles.profileEmail}>{user.email}</Text>
           </View>
           <TouchableOpacity style={styles.editProfileBtn} onPress={() => handleEdit('fullName', user.fullName || '')}>
