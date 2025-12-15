@@ -17,6 +17,9 @@ import { databaseService } from '../services/databaseService';
 import { professionalAIService, Meal, DayPlan } from '../services/professionalAIService';
 import { isSupabaseConfigured } from '../config/supabase';
 import { colors, shadows, spacing, borderRadius, typography } from '../constants/theme';
+import WaterTracker from '../components/WaterTracker';
+import ProgressCharts from '../components/ProgressCharts';
+import WeeklyMealPlan from '../components/WeeklyMealPlan';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -500,6 +503,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
           </View>
         </View>
 
+        {/* Water Tracking */}
+        <WaterTracker userId={user.id} />
+
         {/* Quick Actions */}
         <View style={styles.quickActions}>
           <TouchableOpacity style={styles.quickActionBtn} onPress={onNavigateToRecipes}>
@@ -515,6 +521,17 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
             <Text style={[styles.quickActionText, { color: colors.textPrimary }]}>Exercise</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Weekly Meal Plan */}
+        <WeeklyMealPlan
+          userId={user.id}
+          userProfile={getUserProfile()}
+          onMealPress={onMealPress}
+          onAddMeal={(meal, date) => {
+            onAddToMeals(meal);
+            loadData(); // Refresh after adding
+          }}
+        />
 
         {/* My Meals Section */}
         {myMeals.length > 0 && (
@@ -567,6 +584,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
           </View>
           <Text style={styles.tipText}>{getHealthTip()}</Text>
         </View>
+
+        {/* Weekly Progress Charts */}
+        <ProgressCharts userId={user.id} calorieTarget={calorieTarget} />
 
         <View style={styles.bottomSpacer} />
       </ScrollView>

@@ -261,3 +261,67 @@ CREATE TRIGGER update_user_profiles_updated_at
 CREATE TRIGGER update_user_preferences_updated_at
   BEFORE UPDATE ON public.user_preferences
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+-- ============================================
+-- NEW TABLES FOR WATER TRACKING & PROGRESS
+-- Run this section if tables don't exist yet
+-- ============================================
+
+-- Water Intake Table (if not exists)
+CREATE TABLE IF NOT EXISTS public.water_intake (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  intake_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  amount_ml INTEGER NOT NULL,
+  intake_time TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Index for fast water queries
+CREATE INDEX IF NOT EXISTS idx_water_intake_user_date ON public.water_intake(user_id, intake_date);
+
+-- Enable RLS on water_intake
+ALTER TABLE public.water_intake ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policy for water_intake
+DO $$ 
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can manage own water intake') THEN
+    CREATE POLICY "Users can manage own water intake" ON public.water_intake
+      FOR ALL USING (auth.uid() = user_id);
+  END IF;
+END $$;
+
+-- Nutrition Daily Summary for Progress Charts
+CREATE TABLE IF NOT EXISTS public.nutrition_daily_summary (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  summary_date DATE NOT NULL,
+  total_calories INTEGER DEFAULT 0,
+  total_protein INTEGER DEFAULT 0,
+  total_carbs INTEGER DEFAULT 0,
+  total_fats INTEGER DEFAULT 0,
+  total_sugar INTEGER DEFAULT 0,
+  total_water_ml INTEGER DEFAULT 0,
+  meals_logged INTEGER DEFAULT 0,
+  goal_calories INTEGER,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(user_id, summary_date)
+);
+
+-- Index for progress queries
+CREATE INDEX IF NOT EXISTS idx_nutrition_summary_user_date 
+  ON public.nutrition_daily_summary(user_id, summary_date DESC);
+
+-- Enable RLS
+ALTER TABLE public.nutrition_daily_summary ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policy for nutrition summary
+DO $$ 
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can manage own nutrition summary') THEN
+    CREATE POLICY "Users can manage own nutrition summary" ON public.nutrition_daily_summary
+      FOR ALL USING (auth.uid() = user_id);
+  END IF;
+END $$;
